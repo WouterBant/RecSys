@@ -1,47 +1,18 @@
-from torch.utils.data import DataLoader, Dataset, Sampler
-from pathlib import Path
-from collections import defaultdict
+from torch.utils.data import DataLoader, Dataset
 import json
 import gzip
 import random
-from multiprocessing import Pool
 import pickle
-import math
-from tqdm import tqdm
-import pandas as pd
 import torch
-import numpy as np
 import os
 from torch.utils.data.distributed import DistributedSampler
-from copy import deepcopy
+from transformers import T5Tokenizer
 
-from transformers import T5Tokenizer, T5TokenizerFast
-from tokenization import P5Tokenizer, P5TokenizerFast
 
-def load_json(file_path):
-    with open(file_path, "r") as f:
-        return json.load(f)
 
-def load_pickle(filename):
-    with open(filename, "rb") as f:
-        return pickle.load(f)
 
-def ReadLineFromFile(path):
-    lines = []
-    with open(path,'r') as fd:
-        for line in fd:
-            lines.append(line.rstrip('\n'))
-    return lines
-
-def parse(path):
-    g = gzip.open(path, 'r')
-    for l in g:
-        yield eval(l)
-
-    
-class P5_MIND_Dataset(Dataset):
+class MIND_Dataset(Dataset):
     def __init__(self, all_tasks, task_list, tokenizer, args, sample_numbers, mode ='train', split = 'MIND', rating_augment = False, sample_type = 'random'):
-
 
         self.all_tasks = all_tasks # sequential
         self.task_list = task_list
@@ -57,16 +28,15 @@ class P5_MIND_Dataset(Dataset):
         if self.mode == 'train':
             # {uid: [combined infor history]}
             self.his = pickle.load(
-                open(os.path.join('./train_infor_his'), "rb"))
+                open(os.path.join('/train_infor_his'), "rb"))
   
             # {(uid, pview, nview)]}
             self.interaction = pickle.load(
-                open(os.path.join('./train_interaction'), "rb"))
+                open(os.path.join('/train_interaction'), "rb"))
    
            
         else:
             raise NotImplementedError
-
 
         self.total_length = 0
         self.datum_info = []
@@ -105,16 +75,13 @@ class P5_MIND_Dataset(Dataset):
             user = self.interaction[datum_idx][0]
             pos_infor = self.interaction[datum_idx][1]
             neg_infor = self.interaction[datum_idx][2]
-            
-            #pos_infor = self.infor[pos_id]
-            #neg_infor = self.infor[neg_id]
-            
+     
             # history
             history = self.his[user]
       
 
             task_candidates = self.task_list[task_name]
-            task_idx = random.randint(0, len(task_candidates) - 1)  # random choose the task index for task_candidates
+            task_idx = random.randint(0, len(task_candidates) - 1) 
             task_template = self.all_tasks['sequential'][task_candidates[task_idx]]
             assert task_template['task'] == 'sequential'
 
@@ -122,7 +89,6 @@ class P5_MIND_Dataset(Dataset):
 
                 p = random.random()
                 
-                #print('consider history length', self.args.history_length)
                 his = history[-self.args.history_length: ]
 
                 if p > 0.5:
@@ -130,11 +96,9 @@ class P5_MIND_Dataset(Dataset):
                     source_1 = task_template['source1'].format(', '.join(his), pos_infor)
                     target_1 = task_template['target1'].format('yes')
 
-                    source_2 = task_template['source1'].format(  ', '.join(his),  neg_infor)
+                    source_2 = task_template['source1'].format( ', '.join(his),  neg_infor)
                     target_2 = task_template['target1'].format('no')
                     
-                  
-
                 else:
                     source_1 = task_template['source1'].format(', '.join(his), neg_infor)
                     target_1 = task_template['target1'].format('no')
@@ -142,31 +106,25 @@ class P5_MIND_Dataset(Dataset):
                     source_2 = task_template['source1'].format(', '.join(his), pos_infor)
                     target_2 = task_template['target1'].format('yes')
                     
-                 
-
             else:
                 raise NotImplementedError
-
-            
+  
         else:
             raise NotImplementedError
 
-        # for the first sample
+     
         input_ids_1 = self.tokenizer.encode(source_1, padding = True, truncation = True, max_length = self.args.max_text_length)
         tokenized_text_1 = self.tokenizer.tokenize(source_1)
         whole_word_ids_1 = self.calculate_whole_word_ids(tokenized_text_1, input_ids_1)
         assert len(whole_word_ids_1) == len(input_ids_1)
         target_ids_1 = self.tokenizer.encode(target_1, padding = True, truncation = True, max_length = self.args.gen_max_length)
 
-        # for the second sample
         input_ids_2 = self.tokenizer.encode(source_2, padding = True, truncation = True, max_length = self.args.max_text_length)
         tokenized_text_2 = self.tokenizer.tokenize(source_2)
         whole_word_ids_2 = self.calculate_whole_word_ids(tokenized_text_2, input_ids_2)
         assert len(whole_word_ids_2) == len(input_ids_2)
         target_ids_2 = self.tokenizer.encode(target_2, padding = True, truncation = True, max_length = self.args.gen_max_length)
 
-        
-        # for the first sample
         out_dict['input_ids_1'] = torch.LongTensor(input_ids_1)
         out_dict['input_length_1'] = len(input_ids_1)
         out_dict['source_text_1'] = source_1
@@ -178,7 +136,6 @@ class P5_MIND_Dataset(Dataset):
         out_dict['target_text_1'] = target_1
         out_dict['loss_weight_1'] = loss_weight
 
-        # for the second sample
         out_dict['input_ids_2'] = torch.LongTensor(input_ids_2)
         out_dict['input_length_2'] = len(input_ids_2)
         out_dict['source_text_2'] = source_2
@@ -247,19 +204,18 @@ class P5_MIND_Dataset(Dataset):
         target_text_2 = []
        
         for i, entry in enumerate(batch):
-            # 先放入第一个sample/sentence
+            
             input_ids[i, :entry['input_length_1']] = entry['input_ids_1']
             whole_word_ids[i, :entry['input_length_1']] = entry['whole_word_ids_1']
             target_ids[i, :entry['target_length_1']] = entry['target_ids_1']
 
-            # 放入第二个sample
             input_ids[i + len(batch), :entry['input_length_2']] = entry['input_ids_2']
             whole_word_ids[i + len(batch), :entry['input_length_2']] = entry['whole_word_ids_2']
             target_ids[i + len(batch), :entry['target_length_2']] = entry['target_ids_2']
             
          
             if 'task' in entry:
-                tasks.append(entry['task']) # 16个
+                tasks.append(entry['task']) 
 
             if 'source_text_1' in entry:
                 source_text_1.append(entry['source_text_1']) # length = len(batch)
@@ -292,7 +248,7 @@ class P5_MIND_Dataset(Dataset):
 
            
 
-        # tasks -> length = 32, 0 和16 corresponds to the same user
+        
         task = tasks  + tasks 
         source_text = source_text_1 + source_text_2 
         target_text = target_text_1 + target_text_2 
@@ -313,15 +269,15 @@ class P5_MIND_Dataset(Dataset):
 
         batch_entry['loss_weights'] = loss_weights
         
-        #print(batch_entry['source_text'])
+
         return batch_entry
 
 
 # validation/test dataloader
-class P5_val_Dataset(Dataset):
+class val_Dataset(Dataset):
     def __init__(self, all_tasks, task_list, tokenizer, args, sample_numbers, mode = 'val', split = 'MIND',
                  rating_augment = False, sample_type = 'random'):
-        self.all_tasks = all_tasks  # sequential
+        self.all_tasks = all_tasks
         self.task_list = task_list
         self.tokenizer = tokenizer
         self.args = args
@@ -331,19 +287,15 @@ class P5_val_Dataset(Dataset):
         self.sample_type = sample_type
         self.mode = mode
 
-
-        # upload corresponding data
         if self.mode == 'val':
-            # history {raw user id: ['list of title history']}
             self.his = pickle.load(
-                open(os.path.join('./his'), "rb"))
+                open(os.path.join('/home/XLL1713/PGNR/delete_data/same_history'), "rb"))
   
-            # {(uid, pview, nview)]}
             self.interaction = pickle.load(
-                open(os.path.join('./interaction'), "rb"))
+                open(os.path.join('/home/XLL1713/PGNR/delete_data/same_interaction'), "rb"))
              
             self.infor = pickle.load(
-                open(os.path.join('./news_infor'), "rb"))
+                open(os.path.join('/home/XLL1713/PGNR/delete_data/news_infor'), "rb"))
              
         
         else:
@@ -389,9 +341,6 @@ class P5_val_Dataset(Dataset):
             item_id = self.interaction[datum_idx][2]
             item_infor = self.infor[item_id]
             response = self.interaction[datum_idx][3]
-            
-
-            # history
             history = self.his[raw_user]
             
             
@@ -423,7 +372,7 @@ class P5_val_Dataset(Dataset):
         assert len(whole_word_ids_1) == len(input_ids_1)
         target_ids_1 = self.tokenizer.encode(target_1, padding=True, truncation=True,max_length=self.args.gen_max_length)
       
-        # for the first sample
+       
         out_dict['input_ids_1'] = torch.LongTensor(input_ids_1)
         out_dict['input_length_1'] = len(input_ids_1)
         out_dict['source_text_1'] = source_1
@@ -453,7 +402,7 @@ class P5_val_Dataset(Dataset):
             else:
                 whole_word_ids.append(curr)
         last_item = whole_word_ids[len(input_ids) - 2]
-        return whole_word_ids[:len(input_ids) - 1] + [0]  ## the added [0] is for </s>
+        return whole_word_ids[:len(input_ids) - 1] + [0]  # the added [0] is for </s>
 
     def collate_fn(self, batch):
         args = self.args
@@ -469,7 +418,6 @@ class P5_val_Dataset(Dataset):
         target_ids = torch.ones(B, T_W_L, dtype=torch.long) * self.tokenizer.pad_token_id
         loss_weights = torch.ones(B, dtype=torch.float)
 
-        # i.e. batch_size = 16 -> want the output size = 32 samples
         tasks = []
         user_id = []
         impress_id = []
@@ -481,17 +429,17 @@ class P5_val_Dataset(Dataset):
         
 
         for i, entry in enumerate(batch):
-            # 先放入第一个sample/sentence
+
             input_ids[i, :entry['input_length_1']] = entry['input_ids_1']
             whole_word_ids[i, :entry['input_length_1']] = entry['whole_word_ids_1']
             target_ids[i, :entry['target_length_1']] = entry['target_ids_1']
 
 
             if 'task' in entry:
-                tasks.append(entry['task']) # 16个
+                tasks.append(entry['task'])
 
             if 'source_text_1' in entry:
-                source_text_1.append(entry['source_text_1']) # length = len(batch)
+                source_text_1.append(entry['source_text_1']) 
     
 
             if 'tokenized_text_1' in entry:
@@ -502,7 +450,6 @@ class P5_val_Dataset(Dataset):
                 target_text_1.append(entry['target_text_1'])
           
 
-            # for a certain index in batch
             if 'loss_weight_1' in entry:
                 if entry['target_length_1'] > 0:
                     loss_weights[i] = entry['loss_weight_1'] / entry['target_length_1']
@@ -543,7 +490,6 @@ class P5_val_Dataset(Dataset):
 
         batch_entry['loss_weights'] = loss_weights
 
-        #print(batch_entry['source_text'])
         return batch_entry
 
     
@@ -554,8 +500,7 @@ def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
                batch_size = 16, workers = 4, distributed = False):
 
     if 't5' in args.backbone:
-        # add user_id_ and item_id to the additional special token besides extra_id_ tokens
-        tokenizer = P5Tokenizer.from_pretrained(
+        tokenizer = T5Tokenizer.from_pretrained(
             args.backbone, 
             max_length = args.max_text_length,
             do_lower_case = args.do_lower_case)
@@ -564,12 +509,11 @@ def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
     from MIND_templates import all_tasks as task_templates
 
     if mode == 'train':
-        #args.LOSSES_NAME.append('pair_loss')
-        #args.LOSSES_NAME.append('total_loss')
-        dataset = P5_MIND_Dataset(
+
+        dataset = MIND_Dataset(
             task_templates,
             task_list,
-            tokenizer, # t5-small
+            tokenizer,
             args,
             sample_numbers,
             mode = mode,
@@ -577,8 +521,8 @@ def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
             rating_augment = False
         )
 
-    if mode == 'val':
-        dataset = P5_val_Dataset(
+    if mode == 'val': # for val and test
+        dataset = val_Dataset(
             task_templates,
             task_list,
             tokenizer,
@@ -588,21 +532,6 @@ def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
             split = split,
             rating_augment = False
         )
-    
-    ###### test/inference
-    if mode == 'test':
-        dataset = P5_test_Dataset(
-            task_templates,
-            task_list,
-            tokenizer,
-            args,
-            sample_numbers,
-            mode = mode,
-            split = split,
-            rating_augment = False
-        )
-    
-    
     
 
     if distributed:
