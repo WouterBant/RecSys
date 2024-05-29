@@ -1,22 +1,15 @@
-import torch.backends.cudnn as cudnn
-import torch.multiprocessing as mp
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
+
 import os
-import collections
 from pathlib import Path
 from packaging import version
 
-import numpy as np
-from tqdm import tqdm
 import torch
 import torch.nn as nn
 import logging
-import shutil
-from pprint import pprint
 
-from utils import load_state_dict, LossMeter, set_global_logging_level
-from pprint import pformat
+from pprint import pprint
+from utils import load_state_dict, set_global_logging_level
+
 
 proj_dir = Path(__file__).resolve().parent.parent
 
@@ -31,7 +24,7 @@ if version.parse(torch.__version__) < version.parse("1.6"):
     _use_apex = True
 else:
     _use_native_amp = True
-    from torch.cuda.amp import autocast
+
 
 
 class TrainerBase(object):
@@ -87,15 +80,11 @@ class TrainerBase(object):
         return model
 
     def create_tokenizer(self, **kwargs):
-        from transformers import T5Tokenizer, T5TokenizerFast
-        from tokenization import P5Tokenizer, P5TokenizerFast
-
-        if 'p5' in self.args.tokenizer:
-            tokenizer_class = P5Tokenizer
+        from transformers import T5Tokenizer
 
         tokenizer_name = self.args.backbone
 
-        tokenizer = tokenizer_class.from_pretrained(
+        tokenizer = T5Tokenizer.from_pretrained(
             tokenizer_name,
             max_length=self.args.max_text_length,
             do_lower_case=self.args.do_lower_case,
