@@ -1,7 +1,5 @@
 import re
-import numpy as np
 import torch
-import torch.distributed as dist
 import collections
 import logging
 
@@ -15,7 +13,7 @@ class LossMeter(object):
         return len(self.vals)
 
     def update(self, new_val):
-        self.vals.append(new_val)F
+        self.vals.append(new_val)
 
     @property
     def val(self):
