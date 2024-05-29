@@ -1,21 +1,19 @@
 from dataclasses import dataclass
 
 from transformers.models.t5.modeling_t5 import (
-    T5Stack, T5Block, T5LayerNorm, T5LayerSelfAttention, T5LayerFF, T5LayerCrossAttention,
-    T5PreTrainedModel, T5ForConditionalGeneration
+    T5Stack, T5Block, T5LayerNorm, T5ForConditionalGeneration
 )
 
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any,  Dict,  List, Optional, Tuple
 import copy
 
-from transformers.modeling_outputs import ModelOutput, BaseModelOutput, BaseModelOutputWithPast, BaseModelOutputWithPastAndCrossAttentions, Seq2SeqLMOutput, Seq2SeqModelOutput
-from transformers.modeling_utils import PreTrainedModel, find_pruneable_heads_and_indices, prune_linear_layer
+from transformers.modeling_outputs import ModelOutput, BaseModelOutput,  BaseModelOutputWithPastAndCrossAttentions, Seq2SeqLMOutput, Seq2SeqModelOutput
 from transformers.utils import logging
-from transformers import BeamScorer, BeamSearchScorer
+
 
 logger = logging.get_logger(__name__)
 
@@ -38,7 +36,7 @@ class JointEncoder(T5Stack):
         
         ## Set maximum 512 whole words in a source text
         self.whole_word_embeddings = nn.Embedding(
-            512, config.d_model   ## config.d_model is 768 for base
+            512, config.d_model
         )
 
         self.init_weights()
@@ -338,7 +336,7 @@ class P5(T5ForConditionalGeneration):
 
         loss = None
         if labels is not None:
-            #print('reduce_loss', reduce_loss)
+
             if reduce_loss:
                 loss_fct = CrossEntropyLoss(ignore_index = -100)
             else:
@@ -347,7 +345,7 @@ class P5(T5ForConditionalGeneration):
             loss = loss_fct(
                 lm_logits.view(-1, lm_logits.size(-1)),
                 labels.view(-1)) # [batch_size * timestamp]
-        #print('loss_1', loss)
+
 
         return P5Seq2SeqLMOutput(
             loss=loss,
