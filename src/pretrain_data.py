@@ -289,13 +289,13 @@ class val_Dataset(Dataset):
 
         if self.mode == 'val':
             self.his = pickle.load(
-                open(os.path.join('/home/XLL1713/PGNR/delete_data/same_history'), "rb"))
+                open(os.path.join('data/val/history'), "rb"))
   
             self.interaction = pickle.load(
-                open(os.path.join('/home/XLL1713/PGNR/delete_data/same_interaction'), "rb"))
+                open(os.path.join('data/val/interaction'), "rb"))
              
             self.infor = pickle.load(
-                open(os.path.join('/home/XLL1713/PGNR/delete_data/news_infor'), "rb"))
+                open(os.path.join('data/val/news_infor'), "rb"))
              
         
         else:
