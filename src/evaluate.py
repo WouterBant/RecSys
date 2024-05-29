@@ -153,12 +153,12 @@ def evaluate(test_loader):
     prob_res = collect_results_gpu(prob_each, len(test_loader) * world_size  * args.val_batch_size)
     pred_res = collect_results_gpu(pred_each, len(test_loader) * world_size  * args.val_batch_size)
 
-    save_pickle(user_res, '/home/XLL1713/PGNR/delete_data/delete_result/user_res')
-    save_pickle(item_res, '/home/XLL1713/PGNR/delete_data/delete_result/item_res')
-    save_pickle(impress_res, '/home/XLL1713/PGNR/delete_data/delete_result/impress_res')
-    save_pickle(truth_res, '/home/XLL1713/PGNR/delete_data/delete_result/truth_res')
-    save_pickle(prob_res, '/home/XLL1713/PGNR/delete_data/delete_result/prob_res')
-    save_pickle(pred_res, '/home/XLL1713/PGNR/delete_data/delete_result/pred_res')
+    save_pickle(user_res, './result/user_res')
+    save_pickle(item_res, './result/item_res')
+    save_pickle(impress_res, './result/impress_res')
+    save_pickle(truth_res, './result/truth_res')
+    save_pickle(prob_res, './result/prob_res')
+    save_pickle(pred_res, './result/pred_res')
 
 
 
