@@ -76,8 +76,8 @@ def parse_args(parse=True, **optional_kwargs):
     parser.add_argument('--local_rank', type=int, default=-1)
 
     # Model Config
-    parser.add_argument('--backbone', type=str, default='t5-base')
-    parser.add_argument('--tokenizer', type=str, default='p5')
+    parser.add_argument('--backbone', type=str, default='t5-small')
+    parser.add_argument('--tokenizer', type=str, default='t5')
     parser.add_argument('--whole_word_embed', action='store_true')
 
     parser.add_argument('--max_text_length', type=int, default=128)
