@@ -313,8 +313,7 @@ class Trainer(TrainerBase):
 
     def evaluate_epoch(self, epoch):
 
-        LOSSES_NAME = self.args.LOSSES_NAME #['sequential_loss', 'total_loss']
-
+        LOSSES_NAME = self.args.LOSSES_NAME 
         epoch_results = {}
         for loss_name in LOSSES_NAME:
             epoch_results[loss_name] = 0.
@@ -424,7 +423,7 @@ if __name__ == "__main__":
 
     LOSSES_NAME = [f'{name}_loss' for name in args.losses.split(',')]
     if args.local_rank in [0, -1]:
-        print(LOSSES_NAME) # only care about sequential loss
+        print(LOSSES_NAME) 
 
     LOSSES_NAME.append('pair_loss')
     LOSSES_NAME.append('total_loss')
