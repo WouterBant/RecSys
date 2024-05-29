@@ -1,36 +1,14 @@
-import collections
-import os
-import random
-from pathlib import Path
-import logging
-import shutil
-import time
 import mmcv
 from mmcv.runner import get_dist_info
 import pickle
 
 from packaging import version
-import pandas as pd
-
-from tqdm import tqdm
-import numpy as np
 import torch
-import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 import torch.backends.cudnn as cudnn
 
 from param import parse_args
-from utils import LossMeter
-from trainer_base import TrainerBase
-from pretrain_data import get_loader
-from utils import LossMeter
-from dist_utils import reduce_dict, all_gather
-
-from transformers import T5Tokenizer, T5TokenizerFast
-from tokenization import P5Tokenizer, P5TokenizerFast
-
-from torch.utils.data import DataLoader, Dataset, Sampler
 from pretrain_data import get_loader
 
 
@@ -47,12 +25,12 @@ if version.parse(torch.__version__) < version.parse("1.6"):
     _use_apex = True
 else:
     _use_native_amp = True
-    from torch.cuda.amp import autocast
+
 
 
 
 def create_config(args):
-    from transformers import T5Config, BartConfig
+    from transformers import T5Config
     if 't5' in args.backbone:
         config_class = T5Config
     else:
@@ -106,18 +84,16 @@ def evaluate(test_loader):
         args.tokenizer = args.backbone
 
     tokenizer = create_tokenizer(args)
-    #model_kwargs = {}
     model_class = P5Pretraining
     model = create_model(model_class, config)
 
-    if 'p5' in args.tokenizer:
-        model.resize_token_embeddings(tokenizer.vocab_size)
+    #if 'p5' in args.tokenizer:
+       # model.resize_token_embeddings(tokenizer.vocab_size)
 
     model.tokenizer = tokenizer
 
     # Load Checkpoint
-    from utils import load_state_dict, LossMeter, set_global_logging_level
-    from pprint import pprint
+    from utils import load_state_dict
 
     def load_checkpoint(ckpt_path):
         state_dict = load_state_dict(ckpt_path, 'cpu')
@@ -129,7 +105,7 @@ def evaluate(test_loader):
     ckpt_path = args.load
     load_checkpoint(ckpt_path)
 
-    from MIND_templates import all_tasks as task_template
+   
     # GPU Options
     print(f'Model Launching at GPU {args.gpu}')
 
@@ -177,12 +153,12 @@ def evaluate(test_loader):
     prob_res = collect_results_gpu(prob_each, len(test_loader) * world_size  * args.val_batch_size)
     pred_res = collect_results_gpu(pred_each, len(test_loader) * world_size  * args.val_batch_size)
 
-    save_pickle(user_res, './user_res')
-    save_pickle(item_res, './item_res')
-    save_pickle(impress_res, './impress_res')
-    save_pickle(truth_res, './truth_res')
-    save_pickle(prob_res, './prob_res')
-    save_pickle(pred_res, './pred_res')
+    save_pickle(user_res, '/home/XLL1713/PGNR/delete_data/delete_result/user_res')
+    save_pickle(item_res, '/home/XLL1713/PGNR/delete_data/delete_result/item_res')
+    save_pickle(impress_res, '/home/XLL1713/PGNR/delete_data/delete_result/impress_res')
+    save_pickle(truth_res, '/home/XLL1713/PGNR/delete_data/delete_result/truth_res')
+    save_pickle(prob_res, '/home/XLL1713/PGNR/delete_data/delete_result/prob_res')
+    save_pickle(pred_res, '/home/XLL1713/PGNR/delete_data/delete_result/pred_res')
 
 
 
@@ -264,7 +240,6 @@ if __name__ == "__main__":
     args.world_size = ngpus_per_node
 
 
-
     LOSSES_NAME = [f'{name}_loss' for name in args.losses.split(',')]
     if args.local_rank in [0, -1]:
         print(LOSSES_NAME)  # only care about sequential loss
@@ -272,7 +247,6 @@ if __name__ == "__main__":
     LOSSES_NAME.append('pair_loss')
     LOSSES_NAME.append('total_loss')
     args.LOSSES_NAME = LOSSES_NAME
-
 
 
 
@@ -296,7 +270,6 @@ if __name__ == "__main__":
 
     current_time = datetime.now().strftime('%b%d_%H-%M')
 
-    #project_dir = Path(__file__).resolve().parent.parent
 
     if args.local_rank in [0, -1]:
         run_name = f'{current_time}_GPU{args.world_size}'
