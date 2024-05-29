@@ -28,11 +28,11 @@ class MIND_Dataset(Dataset):
         if self.mode == 'train':
             # {uid: [combined infor history]}
             self.his = pickle.load(
-                open(os.path.join('/train_infor_his'), "rb"))
+                open(os.path.join('./train_infor_his'), "rb"))
   
             # {(uid, pview, nview)]}
             self.interaction = pickle.load(
-                open(os.path.join('/train_interaction'), "rb"))
+                open(os.path.join('./train_interaction'), "rb"))
    
            
         else:
@@ -192,7 +192,6 @@ class MIND_Dataset(Dataset):
 
         loss_weights = torch.ones(B, dtype = torch.float)
 
-        # i.e. batch_size = 16 -> want the output size = 32 samples
         tasks = []
         source_text_1 = []
         source_text_2 = []
