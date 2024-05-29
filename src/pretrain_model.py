@@ -34,7 +34,7 @@ class P5Pretraining(P5):
         B, L = lm_labels.size() # B = len(batch) * 2
 
         # predicted 'word' loss
-        loss = output['loss'] # cross-entropy loss for all samples 2*len(batch)
+        loss = output['loss'] 
         loss = loss.view(B, L) * lm_mask
         loss = loss.sum(dim=1) / lm_mask.sum(dim=1).clamp(min=1) # for each sample, compute its average loss
 
