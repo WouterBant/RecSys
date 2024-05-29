@@ -1,16 +1,10 @@
-import collections
-import os
-import random
 from pathlib import Path
-import logging
-import shutil
 from packaging import version
-import pandas as pd
 
 from tqdm import tqdm
 import numpy as np
 import torch
-import torch.nn as nn
+
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 import torch.backends.cudnn as cudnn
@@ -19,7 +13,7 @@ import torch.backends.cudnn as cudnn
 from param import parse_args
 from pretrain_data import get_loader
 from utils import LossMeter
-from dist_utils import reduce_dict, gather
+from dist_utils import reduce_dict
 
 _use_native_amp = False
 _use_apex = False
@@ -80,9 +74,6 @@ class Trainer(TrainerBase):
         self.tokenizer = self.create_tokenizer()
         self.model = self.create_model(model_class, config, **model_kwargs)
 
-        if 'p5' in self.args.tokenizer:
-            self.model.resize_token_embeddings(self.tokenizer.vocab_size)
-
         self.model.tokenizer = self.tokenizer
 
         # Load Checkpoint
@@ -91,7 +82,7 @@ class Trainer(TrainerBase):
             print('loading pretrained model')
             ckpt_path = args.load + '.pth'
             self.load_checkpoint(ckpt_path)
-            #self.start_epoch = int(args.load.split('Epoch-')[-1])
+
 
         if self.args.from_scratch:
             print('from scratch')
@@ -136,7 +127,7 @@ class Trainer(TrainerBase):
             best_eval_loss = 100000.
 
             if 't5' in self.args.backbone:
-                project_name = "P5_Pretrain"
+                project_name = "T5_Pretrain"
 
             src_dir = Path(__file__).resolve().parent
             base_path = str(src_dir.parent)
@@ -167,9 +158,6 @@ class Trainer(TrainerBase):
 
 
             for step_i, batch in enumerate(self.train_loader):
-              
-
-
 
                 if self.args.fp16 and _use_native_amp:
                     with autocast():
@@ -282,14 +270,9 @@ class Trainer(TrainerBase):
             dist.barrier()
 
 
-            # validation for each epoch
+
             if epoch % 1 == 0:
-                #print("Validation for Epoch%02d" % (epoch + 1))
-                # Validation
-
-
                 valid_results = self.evaluate_epoch(epoch=epoch)
-
                 valid_results = reduce_dict(valid_results, average=False)
 
                 if self.verbose:
@@ -395,7 +378,7 @@ def main_worker(gpu, args):
         torch.cuda.set_device(args.gpu)
         dist.init_process_group(backend='nccl', init_method='env://', timeout=datetime.timedelta(seconds=6000))
 
-    print(f'Building train loader at GPU {gpu}')
+    print(f'----Building train loader at GPU {gpu}----')
 
     train_task_list = {'sequential':['1-1']}
     train_sample_numbers = {'sequential': 1}
@@ -410,7 +393,7 @@ def main_worker(gpu, args):
         distributed = args.distributed
     )
 
-    print(f'Building val loader at GPU {gpu}')
+    print(f'----Building val loader at GPU {gpu}----')
 
     val_task_list = {'sequential':['1-1']}
     val_sample_numbers = { 'sequential': 1}
