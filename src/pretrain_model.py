@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
-
 from modeling_p5 import P5
 
 
@@ -12,8 +10,6 @@ class P5Pretraining(P5):
         super().__init__(config)
         self.losses = self.config.losses.split(',')
         self.weight = 0.40
-        #print('initialize p5 pretrain')
-
 
     def train_step(self, batch):
 
@@ -42,18 +38,14 @@ class P5Pretraining(P5):
         loss = loss.view(B, L) * lm_mask
         loss = loss.sum(dim=1) / lm_mask.sum(dim=1).clamp(min=1) # for each sample, compute its average loss
 
-        # pair loss
-        # in each batch, we must have pair loss besides cross-entropy
-        # batch: half half, compute the pair loss
-        # P(positive 'yes') - P(negative 'yes')
-        
+       
         assert 'logits' in output
         
         target_text = batch['target_text']
         yes_mask = np.array(target_text) == 'yes'  # true/false
-        yes_mask = torch.from_numpy(yes_mask)[:B // 2].to(device)  # tensor true/false
+        yes_mask = torch.from_numpy(yes_mask)[:B // 2].to(device)  
         no_mask = np.array(target_text) == 'no'  # true/false
-        no_mask = torch.from_numpy(no_mask)[:B // 2].to(device)  # tensor true/false
+        no_mask = torch.from_numpy(no_mask)[:B // 2].to(device)  
 
         SOFTMAX = nn.Softmax(dim = -1)
         logits = output['logits'].to(device) #[batch, time, vocab_size]
@@ -168,14 +160,14 @@ class P5Pretraining(P5):
             return_dict_in_generate= True)
     
         generated_sents = self.tokenizer.batch_decode(beam_outputs['sequences'], skip_special_tokens=True)
-        #print('genreated', self.tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True))
-        prob = torch.softmax(beam_outputs['scores'][0], dim = -1) # for the first token 
+        prob = torch.softmax(beam_outputs['scores'][0], dim = -1) # for the first token
         prob_yes = prob[:, 4273].tolist()
 
         return user_id, impress_id, item_id, target_text, prob_yes, generated_sents
    
 
     
+
 
 
 
