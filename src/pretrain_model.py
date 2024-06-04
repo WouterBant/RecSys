@@ -9,6 +9,9 @@ class P5Pretraining(P5):
     def __init__(self, config):
         super().__init__(config)
         self.losses = self.config.losses.split(',')
+
+        # WB: TODO - make this a hyperparameter
+        # btw this was the best setting so for default fine
         self.weight = 0.40
 
     def train_step(self, batch):
@@ -18,8 +21,11 @@ class P5Pretraining(P5):
         input_ids = batch['input_ids'].to(device)
         whole_word_ids = batch['whole_word_ids'].to(device)
         lm_labels = batch["target_ids"].to(device)
+
+        # WB: loss_weights is 1 / length of target text
         loss_weights = batch["loss_weights"].to(device)
 
+        # WB: Here is the forward pass call
         output = self(
             input_ids = input_ids,
             whole_word_ids = whole_word_ids,
@@ -38,9 +44,9 @@ class P5Pretraining(P5):
         loss = loss.view(B, L) * lm_mask
         loss = loss.sum(dim=1) / lm_mask.sum(dim=1).clamp(min=1) # for each sample, compute its average loss
 
-       
         assert 'logits' in output
         
+        # WB: Here is the pair loss calculation
         target_text = batch['target_text']
         yes_mask = np.array(target_text) == 'yes'  # true/false
         yes_mask = torch.from_numpy(yes_mask)[:B // 2].to(device)  
@@ -50,16 +56,20 @@ class P5Pretraining(P5):
         SOFTMAX = nn.Softmax(dim = -1)
         logits = output['logits'].to(device) #[batch, time, vocab_size]
         prob = SOFTMAX(logits) #[batch, time, vocab_size]
+
+        # WB: FIXME - hard coded token id
         pos_prob = prob[:, 0, :][:, 4273] # tensor with size B
         first = pos_prob[: B//2]
         second = pos_prob[B//2:]
 
+        # WB: is this not simply pos_diff*2?
         pos_diff = (first - second) * yes_mask
         neg_diff = (first - second) * no_mask * -1
         diff = pos_diff + neg_diff # pos - neg for all half
+        
+        # WB: diff is the difference between the two probabilities
         pair_loss = -(diff).sigmoid().log().sum()
         average_pair_loss = pair_loss/(B//2)
-
 
         results = {}
 
@@ -103,6 +113,7 @@ class P5Pretraining(P5):
 
         assert 'loss' in output
 
+        # WB: -100 is the padding token
         lm_mask = lm_labels != -100
         lm_mask = lm_mask.float()
         B, L = lm_labels.size()  # B = len(batch)

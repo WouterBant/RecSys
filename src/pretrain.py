@@ -157,6 +157,7 @@ class Trainer(TrainerBase):
                 epoch_results[f'{loss_name}_count'] = 0
 
 
+            # WB: Here is the training loop
             for step_i, batch in enumerate(self.train_loader):
 
                 if self.args.fp16 and _use_native_amp:

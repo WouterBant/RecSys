@@ -35,9 +35,7 @@ class JointEncoder(T5Stack):
         self.dropout = nn.Dropout(config.dropout_rate)
         
         ## Set maximum 512 whole words in a source text
-        self.whole_word_embeddings = nn.Embedding(
-            512, config.d_model
-        )
+        self.whole_word_embeddings = nn.Embedding(512, config.d_model)
 
         self.init_weights()
         self.model_parallel = False
@@ -60,7 +58,7 @@ class JointEncoder(T5Stack):
         return_dict=None,
     ):
 
-        if inputs_embeds is None:
+        if inputs_embeds is None:  # when not using pre-computed embeddings???
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids) ### embedding step - add HERE ###
             if whole_word_ids is not None:
