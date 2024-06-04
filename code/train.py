@@ -22,6 +22,7 @@ def train(args):
     for epoch in tqdm(range(args.n_epochs)):
         model.train()
 
+        # training iteration
         total_loss = 0
         for i, batch in enumerate(data_loader):
             optimizer.zero_grad()
@@ -38,6 +39,7 @@ def train(args):
         if args.use_wandb:
             wandb.log({'epoch_loss': total_loss / len(data_loader)})
         
+        # validation
         if (epoch + 1) % args.eval_interval == 0:
             results = evaluate(model, 'dev')
 
@@ -49,11 +51,12 @@ def train(args):
                 best_metric = results['metric']
                 best_model = copy.deepcopy(model.state_dict())
     
+    # test
     model = model.load_state_dict(best_model)
     model.eval()
     results = evaluate(model, 'test')
     if args.use_wandb:
-        wandb.log(results)  # TODO fix this
+        wandb.log(results)  # TODO fix this + say it is for test set
 
     final_model = copy.deepcopy(model.state_dict())
     return results, final_model, best_model
@@ -94,7 +97,9 @@ if __name__ == '__main__':
 
     # save the final and best model + results on the test set
     time = datetime.now().strftime('%b%d_%H-%M')
+    os.makedirs(f'/checkpoints/{time}', exist_ok=True)
     torch.save(final_model, f'checkpoints/{time}/final_model_lr{args.lr}_model{args.backbone}_epochs{args.n_epochs}.pth')
     torch.save(best_model, f'checkpoints/{time}/best_model_lr{args.lr}_model{args.backbone}_epochs{args.n_epochs}.pth')
+    os.makedirs(f'/results/{time}', exist_ok=True)
     with open(f'/results/{time}/{args.model}_{args.labda}.json', 'w') as f:
         json.dump(results, f)
