@@ -9,6 +9,7 @@ from dataloader import get_loader
 import torch
 from collections import defaultdict
 from datetime import datetime
+import os
 
 
 def evaluate(model, dataset='dev'):
@@ -46,5 +47,6 @@ if __name__ == '__main__':
     results = evaluate(model, 'test')
 
     time = datetime.now().strftime('%b%d_%H-%M')
+    os.makedirs(f'/results/{time}', exist_ok=True)
     with open(f'/results/{time}/{args.model}_{args.labda}.json', 'w') as f:
         json.dump(results, f)
