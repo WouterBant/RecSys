@@ -1,5 +1,5 @@
 import mmcv
-from mmcv.runner import get_dist_info
+from mmengine.dist import get_dist_info
 import pickle
 
 from packaging import version
@@ -10,7 +10,6 @@ import torch.backends.cudnn as cudnn
 
 from param import parse_args
 from pretrain_data import get_loader
-
 
 
 _use_native_amp = False
@@ -25,8 +24,6 @@ if version.parse(torch.__version__) < version.parse("1.6"):
     _use_apex = True
 else:
     _use_native_amp = True
-
-
 
 
 def create_config(args):
@@ -47,6 +44,7 @@ def create_config(args):
 
 
 def create_tokenizer(args):
+    print("hi")
     from transformers import T5Tokenizer, T5TokenizerFast
     from tokenization import P5Tokenizer, P5TokenizerFast
 
@@ -87,8 +85,8 @@ def evaluate(test_loader):
     model_class = P5Pretraining
     model = create_model(model_class, config)
 
-    #if 'p5' in args.tokenizer:
-       # model.resize_token_embeddings(tokenizer.vocab_size)
+    if 'p5' in args.tokenizer:
+       model.resize_token_embeddings(tokenizer.vocab_size)
 
     model.tokenizer = tokenizer
 
@@ -239,17 +237,17 @@ if __name__ == "__main__":
     ngpus_per_node = torch.cuda.device_count()
     args.world_size = ngpus_per_node
 
-
+    print(1)
     LOSSES_NAME = [f'{name}_loss' for name in args.losses.split(',')]
     if args.local_rank in [0, -1]:
         print(LOSSES_NAME)  # only care about sequential loss
+    print(2)
 
     LOSSES_NAME.append('pair_loss')
     LOSSES_NAME.append('total_loss')
     args.LOSSES_NAME = LOSSES_NAME
 
-
-
+    print(3)
     comments = []
     dsets = []
     if 'MIND' in args.train:
@@ -257,6 +255,7 @@ if __name__ == "__main__":
 
     comments.append(''.join(dsets))
 
+    print(4)
     args.backbone = 't5-small'
     if args.backbone:
         comments.append(args.backbone)
@@ -270,7 +269,7 @@ if __name__ == "__main__":
 
     current_time = datetime.now().strftime('%b%d_%H-%M')
 
-
+    print("yo")
     if args.local_rank in [0, -1]:
         run_name = f'{current_time}_GPU{args.world_size}'
         if len(comments) > 0:

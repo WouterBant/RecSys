@@ -4,7 +4,6 @@ import numpy as np
 from modeling_p5 import P5
 
 
-
 class P5Pretraining(P5):
     def __init__(self, config):
         super().__init__(config)
@@ -171,14 +170,7 @@ class P5Pretraining(P5):
             return_dict_in_generate= True)
     
         generated_sents = self.tokenizer.batch_decode(beam_outputs['sequences'], skip_special_tokens=True)
-        prob = torch.softmax(beam_outputs['scores'][0], dim = -1) # for the first token
-        prob_yes = prob[:, 4273].tolist()
+        prob = torch.softmax(beam_outputs['scores'][0], dim = -1)   # for the first token
+        prob_yes = prob[:, 4273].tolist()  # WB: FIXME - hard coded token id for 'yes'?
 
         return user_id, impress_id, item_id, target_text, prob_yes, generated_sents
-   
-
-    
-
-
-
-
