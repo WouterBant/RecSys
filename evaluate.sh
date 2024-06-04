@@ -8,7 +8,7 @@ output=snap/$name
 PYTHONPATH=$PYTHONPATH:./src \
 python -m torch.distributed.launch \
         --master_port 1455\
-        ./../src/evaluate.py \
+        ./src/evaluate.py \
         --distributed --multiGPU \
         --seed 3407 \
         --load  # load checkpoint here \

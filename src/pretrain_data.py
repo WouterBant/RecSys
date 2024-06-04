@@ -1,14 +1,10 @@
 from torch.utils.data import DataLoader, Dataset
-import json
-import gzip
 import random
 import pickle
 import torch
 import os
 from torch.utils.data.distributed import DistributedSampler
 from transformers import T5Tokenizer
-
-
 
 
 class MIND_Dataset(Dataset):
@@ -33,8 +29,6 @@ class MIND_Dataset(Dataset):
             # {(uid, pview, nview)]}
             self.interaction = pickle.load(
                 open(os.path.join('./train_interaction'), "rb"))
-   
-           
         else:
             raise NotImplementedError
 
@@ -57,7 +51,6 @@ class MIND_Dataset(Dataset):
         return self.total_length
 
     def __getitem__(self, idx):
-        
         out_dict = {}
         out_dict['args'] = self.args
         loss_weight = 1.0
@@ -79,7 +72,6 @@ class MIND_Dataset(Dataset):
             # history
             history = self.his[user]
       
-
             task_candidates = self.task_list[task_name]
             task_idx = random.randint(0, len(task_candidates) - 1) 
             task_template = self.all_tasks['sequential'][task_candidates[task_idx]]
@@ -146,8 +138,6 @@ class MIND_Dataset(Dataset):
         out_dict['target_length_2'] = len(target_ids_2)
         out_dict['target_text_2'] = target_2
         out_dict['loss_weight_2'] = loss_weight
-        
-    
 
         out_dict['task'] = 'sequential'
 
@@ -245,9 +235,6 @@ class MIND_Dataset(Dataset):
                 else:
                     loss_weights[i + len(batch)] = entry['loss_weight_2']
 
-           
-
-        
         task = tasks  + tasks 
         source_text = source_text_1 + source_text_2 
         target_text = target_text_1 + target_text_2 
@@ -268,7 +255,6 @@ class MIND_Dataset(Dataset):
 
         batch_entry['loss_weights'] = loss_weights
         
-
         return batch_entry
 
 
@@ -296,7 +282,6 @@ class val_Dataset(Dataset):
             self.infor = pickle.load(
                 open(os.path.join('data/val/news_infor'), "rb"))
              
-        
         else:
             raise NotImplementedError
 
@@ -355,11 +340,9 @@ class val_Dataset(Dataset):
             
                 source_1 = task_template['source1'].format(', '.join(his), item_infor)
                 target_1 = task_template['target1'].format(response)
-                
 
             else:
-                raise NotImplementedError
-            
+                raise NotImplementedError   
 
         else:
             raise NotImplementedError
@@ -440,22 +423,17 @@ class val_Dataset(Dataset):
             if 'source_text_1' in entry:
                 source_text_1.append(entry['source_text_1']) 
     
-
             if 'tokenized_text_1' in entry:
                 tokenized_text_1.append(entry['tokenized_text_1'])
-        
 
             if 'target_text_1' in entry:
                 target_text_1.append(entry['target_text_1'])
-          
 
             if 'loss_weight_1' in entry:
                 if entry['target_length_1'] > 0:
                     loss_weights[i] = entry['loss_weight_1'] / entry['target_length_1']
                 else:
                     loss_weights[i] = entry['loss_weight_1']
-
-    
 
             if 'impress_id' in entry:
                 impress_id.append(entry['impress_id'])
@@ -465,7 +443,6 @@ class val_Dataset(Dataset):
 
             if 'item_id' in entry:
                 item_id.append(entry['item_id'])
-
   
         task = tasks
         source_text = source_text_1 
@@ -490,9 +467,6 @@ class val_Dataset(Dataset):
         batch_entry['loss_weights'] = loss_weights
 
         return batch_entry
-
-    
-    
 
 
 def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
@@ -532,7 +506,6 @@ def get_loader(args, task_list, sample_numbers, split = 'MIND', mode = 'train',
             rating_augment = False
         )
     
-
     if distributed:
         sampler = DistributedSampler(dataset)
     else:
