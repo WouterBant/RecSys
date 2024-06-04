@@ -20,6 +20,3 @@ template['id'] = "1-1"
 task_subgroup_1["1-1"] = template
 
 all_tasks['sequential'] = task_subgroup_1
-
-
-
