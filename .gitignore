@@ -132,7 +132,6 @@ ebnerd-data-demo/
 ebnerd-data-test/
 data/
 demo_data/
-predictions.txt
 
 # Spyder project settings
 .spyderproject
