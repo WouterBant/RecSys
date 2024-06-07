@@ -24,6 +24,8 @@ def train(args):
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=2048)
     data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=2048)
+    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
     ce = CrossEntropyLoss()
 
     best_metric, best_model = 0, None
@@ -56,6 +58,8 @@ def train(args):
             logits_pos = torch.stack((outputs_pos.logits[:,-1,36399], outputs_pos.logits[:,-1,375]), dim=1)
             logits_neg = torch.stack((outputs_neg.logits[:,-1,36399], outputs_neg.logits[:,-1,375]), dim=1)
 
+            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
+            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
             target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
             target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
 
