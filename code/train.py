@@ -9,6 +9,15 @@ import wandb
 from tqdm import tqdm
 import os
 import json
+from torch.nn import CrossEntropyLoss
+from transformers import AutoTokenizer
+
+def compute_rank_loss(logits_pos, logits_neg):
+    r_pos = torch.sigmoid(logits_pos)
+    r_neg = torch.sigmoid(logits_neg)
+    diff = torch.sigmoid(r_pos - r_neg)
+    return torch.log(1e-8 + torch.exp(diff))
+
 
 
 def train(args):
@@ -16,6 +25,9 @@ def train(args):
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     data_loader = get_loader('train')
+    ce = CrossEntropyLoss()
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=128)
+
 
     best_metric, best_model = 0, None
 
@@ -27,9 +39,36 @@ def train(args):
         for i, batch in enumerate(data_loader):
             optimizer.zero_grad()
             # Make sure everything is put to device
-            output = model(batch)
-            loss = output['loss']
+
+            input_pos, input_neg = batch
+            input_pos = input_pos.to(device)
+            input_neg = input_neg.to(device)
+            decoder_input = tokenizer(["",""], return_tensors="pt")
+
+            outputs_pos = model.base_model(input_ids=input_pos.input_ids, 
+                                           attention_mask=input_pos.attention_mask,
+                                           decoder_input_ids=decoder_input.input_ids,
+                                           decoder_attention_mask=decoder_input.attention_mask)
+            outputs_neg = model.base_model(input_ids=input_neg.input_ids, 
+                                           attention_mask=input_neg.attention_mask,
+                                           decoder_input_ids=decoder_input.input_ids,
+                                           decoder_attention_mask=decoder_input.attention_mask)
+
+            #logits = [yes,no] (magic numbers = token idxs for 'yes' and 'no')
+            logits_pos = torch.stack((outputs_pos.logits[:,-1,36399], outputs_pos.logits[:,-1,375]), dim=1)
+            logits_neg = torch.stack((outputs_neg.logits[:,-1,36399], outputs_neg.logits[:,-1,375]), dim=1)
+
+            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(logits_pos.shape[0],1)
+            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(logits_pos.shape[0],1)
+
+            loss_nll = ce(logits_pos, target_pos) + ce(logits_neg, target_neg)
+            loss_bpr = -compute_rank_loss(logits_pos[0], logits_neg[0]).mean(dim=0)
+
+            lamb=0.5
+            loss = (1-lamb)*loss_nll + lamb*loss_bpr
+
             loss.backward()
+
             optimizer.step()
             total_loss += loss.item()
 
