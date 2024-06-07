@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import random
-
+from prompt_templates import create_prompt
 
 class EkstraBladetDataset(Dataset):
 
@@ -74,20 +74,6 @@ class EkstraBladetDataset(Dataset):
 
         return (self.tokenize(pos_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'), 
                 self.tokenize(neg_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'))
-    
-def create_prompt(titles, subtitles, title, subtitle):
-    # TODO maak vet mooie deense prompt hier
-    # prompt = f"Given the following titles and subtitles of previously read articles:\n"
-    # for i, (t, s) in enumerate(zip(titles, subtitles)):
-    #     prompt += f"Article {i+1}:\nTitle: {t}\nSubtitle: {s}\n\n"
-    # prompt += f"Is the user likely to click on an the following article:\n Title: {title}\n Subtitle {subtitle}? (yes/no)\n"
-    # return prompt
-    prompt = f"Givet følgende titler og undertekster fra tidligere læste artikler:\n"
-    for i, (t, s) in enumerate(zip(titles, subtitles)):
-        prompt += f"Artikel {i+1}:\nTitel: {t}\nUndertekst: {s}\n\n"
-    prompt += f"Er brugeren sandsynligvis interesseret i at klikke på den følgende artikel:\n Titel: {title}\n Undertekst: {subtitle}? (ja/nej)\n"
-    # of is ingen beter ipv nej
-    return prompt
 
 def collate_fn(batch):
     tokenized_pos = [prompt[0] for prompt in batch]
