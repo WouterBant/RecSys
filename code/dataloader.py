@@ -95,12 +95,13 @@ def collate_fn(batch):
 
     return {
         'pos_input_ids': pos_input_ids,
-        'pos_attention_mask': pos_attention_mask,
+        'pos_attention_mask': pos_attention_mask
+    }, {
         'neg_input_ids': neg_input_ids,
         'neg_attention_mask': neg_attention_mask
     }
 
-def get_loader(dataset, split, T=5, debug=False):
+def get_loader(dataset, split, tokenizer, T=5, debug=False):
     """
     input:
         - dataset: str, one of demo, large
@@ -112,14 +113,15 @@ def get_loader(dataset, split, T=5, debug=False):
     assert dataset in ['demo', 'large'], 'dataset should be one of demo, large'
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
-    tokenizer = AutoTokenizer.from_pretrained("google/mt5-base", model_max_length=4096)
     data = EkstraBladetDataset(create_prompt, tokenizer, dataset=dataset, split=split, T=T, debug=debug)
 
-    return DataLoader(data, batch_size=1, collate_fn=collate_fn, shuffle=True)
+    return DataLoader(data, batch_siaze=1, collate_fn=collate_fn, shuffle=True)
 
 
 if __name__ == "__main__":
-    train_loader = get_loader('large', 'train', T=5, debug=True)
+    tokenizer = AutoTokenizer.from_pretrained("google/mt5-base")
+
+    train_loader = get_loader('large', 'train', tokenizer, T=5, debug=True)
 
     import time 
     num_samples = 1
