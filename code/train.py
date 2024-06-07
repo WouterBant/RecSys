@@ -24,8 +24,8 @@ def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=128)
-    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=2048)
+    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
     ce = CrossEntropyLoss()
 
 
@@ -42,7 +42,9 @@ def train(args):
 
             input_pos, input_neg = batch
 
-            decoder_input = tokenizer(["",""], return_tensors="pt")
+            batch_size = input_pos["pos_input_ids"].shape[0]
+
+            decoder_input = tokenizer([""]*batch_size, return_tensors="pt")
 
             outputs_pos = model.base_model(input_ids=input_pos["pos_input_ids"].to(device), 
                                            attention_mask=input_pos["pos_attention_mask"].to(device),
@@ -57,8 +59,8 @@ def train(args):
             logits_pos = torch.stack((outputs_pos.logits[:,-1,36399], outputs_pos.logits[:,-1,375]), dim=1)
             logits_neg = torch.stack((outputs_neg.logits[:,-1,36399], outputs_neg.logits[:,-1,375]), dim=1)
 
-            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(logits_pos.shape[0],1)
-            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(logits_pos.shape[0],1)
+            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
+            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
 
             loss_nll = ce(logits_pos, target_pos) + ce(logits_neg, target_neg)
             loss_bpr = -compute_rank_loss(logits_pos[0], logits_neg[0]).mean(dim=0)
