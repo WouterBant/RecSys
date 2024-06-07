@@ -128,7 +128,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-ebnerd-data-demo/
 ebnerd-data-test/
 ebnerd-data-large/
 data/
