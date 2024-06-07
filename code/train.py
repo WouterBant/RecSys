@@ -103,19 +103,19 @@ def train(args):
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backbone', type=str, default='t5-small', help='backbone model')
-    parser.add_argument('--tokenizer', type=str, default='t5-small', help='tokenizer model')
+    parser.add_argument('--backbone', type=str, default='google/mt5-small', help='backbone model')
+    parser.add_argument('--tokenizer', type=str, default='google/mt5-small', help='tokenizer model')
     parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
-    parser.add_argument('use_wandb', type=bool, default=False, help='use wandb for logging') 
-    parser.add_argument('debug', type=bool, default=False, help='debug mode')
-    parser.add_argument('dataset', type=str, default='train', help='dataset to train on')
-    parser.add_argument('eval_interval', type=int, default=1, help='evaluate model every n epochs')
-    parser.add_argument('from_checkpoint', type=str, default='', help='load model from checkpoint')
+    parser.add_argument('--use_wandb', type=bool, default=False, help='use wandb for logging') 
+    parser.add_argument('--debug', type=bool, default=False, help='debug mode')
+    parser.add_argument('--dataset', type=str, default='train', help='dataset to train on')
+    parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
+    parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
     args = parser.parse_args()
     return args
 
