@@ -115,7 +115,7 @@ def get_loader(dataset, split, tokenizer, T=5, debug=False):
 
     data = EkstraBladetDataset(create_prompt, tokenizer, dataset=dataset, split=split, T=T, debug=debug)
 
-    return DataLoader(data, batch_siaze=1, collate_fn=collate_fn, shuffle=True)
+    return DataLoader(data, batch_size=1, collate_fn=collate_fn, shuffle=True)
 
 
 if __name__ == "__main__":

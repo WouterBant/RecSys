@@ -24,9 +24,9 @@ def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    data_loader = get_loader('train')
-    ce = CrossEntropyLoss()
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=128)
+    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=True)
+    ce = CrossEntropyLoss()
 
 
     best_metric, best_model = 0, None
@@ -41,18 +41,17 @@ def train(args):
             # Make sure everything is put to device
 
             input_pos, input_neg = batch
-            input_pos = input_pos.to(device)
-            input_neg = input_neg.to(device)
+
             decoder_input = tokenizer(["",""], return_tensors="pt")
 
-            outputs_pos = model.base_model(input_ids=input_pos.input_ids, 
-                                           attention_mask=input_pos.attention_mask,
-                                           decoder_input_ids=decoder_input.input_ids,
-                                           decoder_attention_mask=decoder_input.attention_mask)
-            outputs_neg = model.base_model(input_ids=input_neg.input_ids, 
-                                           attention_mask=input_neg.attention_mask,
-                                           decoder_input_ids=decoder_input.input_ids,
-                                           decoder_attention_mask=decoder_input.attention_mask)
+            outputs_pos = model.base_model(input_ids=input_pos["input_ids"].to(device), 
+                                           attention_mask=input_pos["attention_mask"].to(device),
+                                           decoder_input_ids=decoder_input["input_ids"].to(device),
+                                           decoder_attention_mask=decoder_input["attention_mask"].to(device))
+            outputs_neg = model.base_model(input_ids=input_neg["input_ids"].to(device), 
+                                           attention_mask=input_neg["attention_mask"].to(device),
+                                           decoder_input_ids=decoder_input["input_ids"].to(device),
+                                           decoder_attention_mask=decoder_input["attention_mask"].to(device))
 
             #logits = [yes,no] (magic numbers = token idxs for 'yes' and 'no')
             logits_pos = torch.stack((outputs_pos.logits[:,-1,36399], outputs_pos.logits[:,-1,375]), dim=1)
@@ -64,7 +63,7 @@ def train(args):
             loss_nll = ce(logits_pos, target_pos) + ce(logits_neg, target_neg)
             loss_bpr = -compute_rank_loss(logits_pos[0], logits_neg[0]).mean(dim=0)
 
-            lamb=0.5
+            lamb=args.labda
             loss = (1-lamb)*loss_nll + lamb*loss_bpr
 
             loss.backward()
@@ -113,7 +112,7 @@ def argparser():
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
     parser.add_argument('--use_wandb', type=bool, default=False, help='use wandb for logging') 
     parser.add_argument('--debug', type=bool, default=False, help='debug mode')
-    parser.add_argument('--dataset', type=str, default='train', help='dataset to train on')
+    parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
     parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
     args = parser.parse_args()
