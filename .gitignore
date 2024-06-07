@@ -130,8 +130,10 @@ env.bak/
 venv.bak/
 ebnerd-data-demo/
 ebnerd-data-test/
+ebnerd-data-large/
 data/
 demo_data/
+large_data/
 
 # Spyder project settings
 .spyderproject

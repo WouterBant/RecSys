@@ -1,19 +1,18 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
-import random
-import polars as pl
 from transformers import AutoTokenizer
+import random
 
 
 class EkstraBladetDataset(Dataset):
 
-    def __init__(self, create_prompt, tokenizer, split="train", T=5):
+    def __init__(self, create_prompt, tokenizer, dataset="demo", split="train", T=5, debug=False):
         
         # Download the dataset from huggingface
-        self.behaviors = load_dataset('Wouter01/RecSys_demo', 'behaviors', cache_dir="demo_data")[split]
-        self.articles = load_dataset('Wouter01/RecSys_demo', 'articles', cache_dir="demo_data")[split].to_pandas()
-        self.history = load_dataset('Wouter01/RecSys_demo', 'history', cache_dir="demo_data")[split].to_pandas()
+        self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"{dataset}_data")[split]
+        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"{dataset}_data")[split].to_pandas()
+        self.history = load_dataset(f'Wouter01/RecSys_{dataset}', 'history', cache_dir=f"{dataset}_data")[split].to_pandas()
 
         # Set fast lookup for identifier keys
         self.history.set_index("user_id", inplace=True)
@@ -22,6 +21,7 @@ class EkstraBladetDataset(Dataset):
         self.T = T  # Number of previous clicked articles to consider
         self.create_prompt = create_prompt  # Function to create a prompt from the data
         self.tokenize = tokenizer
+        self.debug = debug
 
     def __len__(self):
         return len(self.behaviors)
@@ -34,6 +34,10 @@ class EkstraBladetDataset(Dataset):
         clicked_articles = behavior["article_ids_clicked"]
         unclicked_articles = [article for article in behavior["article_ids_inview"] if article not in clicked_articles]
         pos_sample = random.choice(clicked_articles)
+
+        # If all documents clicked just treat one of them as a negative sample
+        if len(unclicked_articles) == 0:
+            unclicked_articles = clicked_articles
         neg_sample = random.choice(unclicked_articles)
 
         # Get the history of the user
@@ -61,6 +65,13 @@ class EkstraBladetDataset(Dataset):
         pos_prompt = self.create_prompt(titles, subtitles, title_pos, subtitle_pos)
         neg_prompt = self.create_prompt(titles, subtitles, title_neg, subtitle_neg)
 
+        if self.debug:
+            print("idx", idx)
+            print("behavior", behavior)
+            print("history", history)
+            print("pos_prompt", pos_prompt)
+            print("neg_prompt", neg_prompt)
+
         return (self.tokenize(pos_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'), 
                 self.tokenize(neg_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'))
     
@@ -69,7 +80,7 @@ def create_prompt(titles, subtitles, title, subtitle):
     prompt = f"Given the following titles and subtitles of previously read articles:\n"
     for i, (t, s) in enumerate(zip(titles, subtitles)):
         prompt += f"Article {i+1}:\nTitle: {t}\nSubtitle: {s}\n\n"
-    prompt += f"Is the user likely to click on an articles with title {title} and subtitle {subtitle}? (yes/no)\n"
+    prompt += f"Is the user likely to click on an the following article:\n Title: {title}\n Subtitle {subtitle}? (yes/no)\n"
     return prompt
 
 def collate_fn(batch):
@@ -89,17 +100,34 @@ def collate_fn(batch):
         'neg_attention_mask': neg_attention_mask
     }
 
-def get_loader(dataset, T=5):
+def get_loader(dataset, split, T=5, debug=False):
     """
     input:
-        - dataset: str, one of 'train', 'validation', 'test'
+        - dataset: str, one of demo, large
+        - split: str, one of 'train', 'validation', 'test'
         - T: int, number of previous clicked articles to consider
     """
     # TODO geef tokenizer mee hier
     # test werkt nog niet
-    assert dataset in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
+    assert dataset in ['demo', 'large'], 'dataset should be one of demo, large'
+    assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
     tokenizer = AutoTokenizer.from_pretrained("google/mt5-base", model_max_length=4096)
-    data = EkstraBladetDataset(create_prompt, tokenizer, split=dataset, T=T)
+    data = EkstraBladetDataset(create_prompt, tokenizer, dataset=dataset, split=split, T=T, debug=debug)
 
-    return DataLoader(data, batch_size=64, collate_fn=collate_fn, shuffle=True)
+    return DataLoader(data, batch_size=1, collate_fn=collate_fn, shuffle=True)
+
+
+if __name__ == "__main__":
+    train_loader = get_loader('large', 'train', T=5, debug=True)
+
+    import time 
+    num_samples = 1
+    start_time = time.time()
+    for batch in train_loader:
+        # print(batch)
+        num_samples -= 1
+        if num_samples == 0:
+            break
+    end_time = time.time()
+    print(f'Number of sampels/sec = {50*64/(end_time-start_time)}')
