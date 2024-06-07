@@ -44,12 +44,12 @@ def train(args):
 
             decoder_input = tokenizer(["",""], return_tensors="pt")
 
-            outputs_pos = model.base_model(input_ids=input_pos["input_ids"].to(device), 
-                                           attention_mask=input_pos["attention_mask"].to(device),
+            outputs_pos = model.base_model(input_ids=input_pos["pos_input_ids"].to(device), 
+                                           attention_mask=input_pos["pos_attention_mask"].to(device),
                                            decoder_input_ids=decoder_input["input_ids"].to(device),
                                            decoder_attention_mask=decoder_input["attention_mask"].to(device))
-            outputs_neg = model.base_model(input_ids=input_neg["input_ids"].to(device), 
-                                           attention_mask=input_neg["attention_mask"].to(device),
+            outputs_neg = model.base_model(input_ids=input_neg["neg_input_ids"].to(device), 
+                                           attention_mask=input_neg["neg_attention_mask"].to(device),
                                            decoder_input_ids=decoder_input["input_ids"].to(device),
                                            decoder_attention_mask=decoder_input["attention_mask"].to(device))
 
