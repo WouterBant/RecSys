@@ -83,8 +83,8 @@ class Collator:
         neg_inputs = self.tokenizer([n for _, n in batch], return_tensors='pt', padding=True, truncation=True)
         
         with self.tokenizer.as_target_tokenizer():
-            pos_targets = self.tokenizer(['yes' for _ in batch], return_tensors="pt", padding=True, truncation=True)
-            neg_targets = self.tokenizer(['no' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+            pos_targets = self.tokenizer(['ja' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+            neg_targets = self.tokenizer(['nej' for _ in batch], return_tensors="pt", padding=True, truncation=True)
         
         return {
             "pos_input_ids": pos_inputs["input_ids"],

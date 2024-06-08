@@ -13,9 +13,15 @@ from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 
 
+# def compute_rank_loss(logits_pos, logits_neg):  # og
+#     r_pos = torch.sigmoid(logits_pos)
+#     r_neg = torch.sigmoid(logits_neg)
+#     diff = torch.sigmoid(r_pos - r_neg)
+#     return -torch.log(1e-8 + diff)
+
 def compute_rank_loss(logits_pos, logits_neg):
-    r_pos = torch.sigmoid(logits_pos)
-    r_neg = torch.sigmoid(logits_neg)
+    r_pos = logits_pos
+    r_neg = logits_neg
     diff = torch.sigmoid(r_pos - r_neg)
     return -torch.log(1e-8 + diff)
 
@@ -47,7 +53,7 @@ def train(args):
                 decoder_input_ids=batch["neg_labels"].to(device),
             )
 
-            # Only take the first token (should be 'yes' or 'no')
+            # Only take the first token (should be 'ja' or 'nej')
             pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
             neg_logits = neg_outputs.logits[:,0,:]
 
@@ -56,8 +62,8 @@ def train(args):
             neg_logits_yes = neg_logits[:, 432]
 
             # Same for the targets that store one of the V labels
-            pos_target = batch["pos_labels"][:,0]  # B, T -> B
-            neg_target = batch["neg_labels"][:,0]
+            pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
+            neg_target = batch["neg_labels"][:,0].to(device)
 
             # Compute loss
             loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
@@ -74,23 +80,23 @@ def train(args):
 
             if args.use_wandb and args.debug:
                 wandb.log({'batch_loss': loss.item()})
-                accuracy = (pos_logits > neg_logits).float().mean()
+                accuracy = (pos_logits_yes > neg_logits_yes).float().mean()
                 wandb.log({'batch_accuracy': accuracy})
 
         if args.use_wandb:
             wandb.log({'epoch_loss': total_loss / len(data_loader)})
         
         # validation
-        if (epoch + 1) % args.eval_interval == 0:
-            results = evaluate(model, 'dev')
+        # if (epoch + 1) % args.eval_interval == 0:
+        #     results = evaluate(model, 'dev')
 
-            if args.use_wandb:
-                wandb.log(results)  # this will not work but do this for all metrics
+        #     if args.use_wandb:
+        #         wandb.log(results)  # this will not work but do this for all metrics
             
-            # TODO fix this, just ndcg or someting
-            if results['metric'] > best_metric:
-                best_metric = results['metric']
-                best_model = copy.deepcopy(model.state_dict())
+        #     # TODO fix this, just ndcg or someting
+        #     if results['metric'] > best_metric:
+        #         best_metric = results['metric']
+        #         best_model = copy.deepcopy(model.state_dict())
     
     # test
     model.load_state_dict(best_model)
