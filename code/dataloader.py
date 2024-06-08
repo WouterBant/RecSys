@@ -95,21 +95,21 @@ class Collator:
             "neg_labels": neg_targets["input_ids"]
         }
 
-def get_loader(dataset, split, tokenizer, T=5, debug=False):
+def get_loader(args, split, tokenizer, T=5, debug=False):
     """
     input:
-        - dataset: str, one of demo, large
+        - args
         - split: str, one of 'train', 'validation', 'test'
         - T: int, number of previous clicked articles to consider
     """
     # test werkt nog niet
-    assert dataset in ['demo', 'large'], 'dataset should be one of demo, large'
+    assert args.dataset in ['demo', 'large'], 'dataset should be one of demo, large'
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
     collator = Collator(tokenizer)
-    data = EkstraBladetDataset(create_prompt, dataset=dataset, split=split, T=T, debug=debug)
+    data = EkstraBladetDataset(create_prompt, dataset=args.dataset, split=split, T=T, debug=debug)
 
-    return DataLoader(data, batch_size=4, collate_fn=collator, shuffle=True)
+    return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
 
 
 if __name__ == "__main__":

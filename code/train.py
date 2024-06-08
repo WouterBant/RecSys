@@ -24,7 +24,7 @@ def train(args):
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
+    data_loader = get_loader(args, 'train', tokenizer, T=4, debug=False)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
@@ -33,9 +33,9 @@ def train(args):
         model.train()
         total_loss = 0
 
-        for idx, batch in tqdm(enumerate(data_loader)):
+        for batch in tqdm(data_loader):
 
-            # forward pass for the positive and negative examples
+            # Forward pass for the positive and negative examples
             pos_outputs = model(
                 input_ids=batch["pos_input_ids"].to(device), 
                 attention_mask=batch["pos_attention_mask"].to(device),
@@ -47,33 +47,35 @@ def train(args):
                 decoder_input_ids=batch["neg_labels"].to(device),
             )
 
-            # only take the first token (should be 'yes' or 'no')
+            # Only take the first token (should be 'yes' or 'no')
             pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
             neg_logits = neg_outputs.logits[:,0,:]
 
-            # 36339 is the token id for 'yes'
-            pos_logits_yes = pos_logits[:, 36339]  # B, V -> B
-            neg_logits_yes = neg_logits[:, 36339]
+            # 36339 is the token id for 'ja'
+            pos_logits_yes = pos_logits[:, 432]  # B, V -> B
+            neg_logits_yes = neg_logits[:, 432]
 
-            # same for the targets that store one of the V labels
+            # Same for the targets that store one of the V labels
             pos_target = batch["pos_labels"][:,0]  # B, T -> B
             neg_target = batch["neg_labels"][:,0]
 
-            # compute loss
+            # Compute loss
             loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
             loss_bpr = compute_rank_loss(pos_logits_yes, neg_logits_yes).mean(dim=0)
             loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
 
-            # backward pass
+            # Backward pass
             optimizer.zero_grad()
             loss.backward()
 
-            # update weights
+            # Update weights
             optimizer.step()
             total_loss += loss.item()
 
             if args.use_wandb and args.debug:
                 wandb.log({'batch_loss': loss.item()})
+                accuracy = (pos_logits > neg_logits).float().mean()
+                wandb.log({'batch_accuracy': accuracy})
 
         if args.use_wandb:
             wandb.log({'epoch_loss': total_loss / len(data_loader)})
@@ -91,7 +93,7 @@ def train(args):
                 best_model = copy.deepcopy(model.state_dict())
     
     # test
-    model = model.load_state_dict(best_model)
+    model.load_state_dict(best_model)
     model.eval()
     results = evaluate(model, 'test')
     if args.use_wandb:
@@ -109,10 +111,10 @@ def argparser():
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
-    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
-    parser.add_argument('--use_wandb', type=bool, default=False, help='use wandb for logging') 
-    parser.add_argument('--debug', type=bool, default=False, help='debug mode')
+    parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
     parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
@@ -127,7 +129,7 @@ if __name__ == '__main__':
     if args.use_wandb:
         os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
         wandb.init(
-            project=f"{args.backbone}_{args.dataset}_{args.lr}_{args.n_epochs}",
+            project=f"{args.backbone.split('/')[1]}_{args.dataset}_{args.lr}_{args.n_epochs}",
             group=f"{args.backbone}",
             entity="RecSysPGNR",
         )
