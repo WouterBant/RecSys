@@ -19,10 +19,8 @@ from transformers import AutoTokenizer
 #     diff = torch.sigmoid(r_pos - r_neg)
 #     return -torch.log(1e-8 + diff)
 
-def compute_rank_loss(logits_pos, logits_neg):
-    r_pos = logits_pos
-    r_neg = logits_neg
-    diff = torch.sigmoid(r_pos - r_neg)
+def compute_rank_loss(prob_pos, prob_neg):
+    diff = torch.sigmoid(prob_pos - prob_neg)
     return -torch.log(1e-8 + diff)
 
 def train(args):
@@ -45,12 +43,12 @@ def train(args):
             pos_outputs = model(
                 input_ids=batch["pos_input_ids"].to(device), 
                 attention_mask=batch["pos_attention_mask"].to(device),
-                decoder_input_ids=batch["pos_labels"].to(device),
+                labels=batch["pos_labels"].to(device),
             )
             neg_outputs = model(
                 input_ids=batch["neg_input_ids"].to(device),
                 attention_mask=batch["neg_attention_mask"].to(device),
-                decoder_input_ids=batch["neg_labels"].to(device),
+                labels=batch["neg_labels"].to(device),
             )
 
             # Only take the first token (should be 'ja' or 'nej')
@@ -58,8 +56,8 @@ def train(args):
             neg_logits = neg_outputs.logits[:,0,:]
 
             # 36339 is the token id for 'ja'
-            pos_logits_yes = pos_logits[:, 432]  # B, V -> B
-            neg_logits_yes = neg_logits[:, 432]
+            pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
+            neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
 
             # Same for the targets that store one of the V labels
             pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
@@ -67,7 +65,7 @@ def train(args):
 
             # Compute loss
             loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
-            loss_bpr = compute_rank_loss(pos_logits_yes, neg_logits_yes).mean(dim=0)
+            loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
             loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
 
             # Backward pass
@@ -80,7 +78,7 @@ def train(args):
 
             if args.use_wandb and args.debug:
                 wandb.log({'batch_loss': loss.item()})
-                accuracy = (pos_logits_yes > neg_logits_yes).float().mean()
+                accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
                 wandb.log({'batch_accuracy': accuracy})
 
         if args.use_wandb:

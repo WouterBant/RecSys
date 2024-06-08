@@ -86,13 +86,16 @@ class Collator:
             pos_targets = self.tokenizer(['ja' for _ in batch], return_tensors="pt", padding=True, truncation=True)
             neg_targets = self.tokenizer(['nej' for _ in batch], return_tensors="pt", padding=True, truncation=True)
         
+        empt = self.tokenizer(['<s>' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+        
         return {
             "pos_input_ids": pos_inputs["input_ids"],
             "pos_attention_mask": pos_inputs["attention_mask"],
             "neg_input_ids": neg_inputs["input_ids"],
             "neg_attention_mask": neg_inputs["attention_mask"],
             "pos_labels": pos_targets["input_ids"],
-            "neg_labels": neg_targets["input_ids"]
+            "neg_labels": neg_targets["input_ids"],
+            "empt": empt["input_ids"]
         }
 
 def get_loader(args, split, tokenizer, T=5, debug=False):
