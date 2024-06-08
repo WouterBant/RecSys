@@ -1,13 +1,13 @@
-import torch
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import random
 from prompt_templates import create_prompt
 
+
 class EkstraBladetDataset(Dataset):
 
-    def __init__(self, create_prompt, tokenizer, dataset="demo", split="train", T=5, debug=False):
+    def __init__(self, create_prompt, dataset="demo", split="train", T=5, debug=False):
         
         # Download the dataset from huggingface
         self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"{dataset}_data")[split]
@@ -20,7 +20,6 @@ class EkstraBladetDataset(Dataset):
 
         self.T = T  # Number of previous clicked articles to consider
         self.create_prompt = create_prompt  # Function to create a prompt from the data
-        self.tokenize = tokenizer
         self.debug = debug
 
     def __len__(self):
@@ -72,26 +71,29 @@ class EkstraBladetDataset(Dataset):
             print("pos_prompt", pos_prompt)
             print("neg_prompt", neg_prompt)
 
-        return (self.tokenize(pos_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'), 
-                self.tokenize(neg_prompt, padding='max_length', max_length=4096, truncation=True, return_tensors='pt'))
+        return pos_prompt, neg_prompt
 
-def collate_fn(batch):
-    tokenized_pos = [prompt[0] for prompt in batch]
-    tokenized_neg = [prompt[1] for prompt in batch]
+class Collator:
 
-    pos_input_ids = torch.cat([item['input_ids'] for item in tokenized_pos], dim=0)
-    pos_attention_mask = torch.cat([item['attention_mask'] for item in tokenized_pos], dim=0)
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
 
-    neg_input_ids = torch.cat([item['input_ids'] for item in tokenized_neg], dim=0)
-    neg_attention_mask = torch.cat([item['attention_mask'] for item in tokenized_neg], dim=0)
-
-    return {
-        'pos_input_ids': pos_input_ids,
-        'pos_attention_mask': pos_attention_mask
-    }, {
-        'neg_input_ids': neg_input_ids,
-        'neg_attention_mask': neg_attention_mask
-    }
+    def __call__(self, batch):
+        pos_inputs = self.tokenizer([p for p, _ in batch], return_tensors='pt', padding=True, truncation=True)
+        neg_inputs = self.tokenizer([n for _, n in batch], return_tensors='pt', padding=True, truncation=True)
+        
+        with self.tokenizer.as_target_tokenizer():
+            pos_targets = self.tokenizer(['yes' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+            neg_targets = self.tokenizer(['no' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+        
+        return {
+            "pos_input_ids": pos_inputs["input_ids"],
+            "pos_attention_mask": pos_inputs["attention_mask"],
+            "neg_input_ids": neg_inputs["input_ids"],
+            "neg_attention_mask": neg_inputs["attention_mask"],
+            "pos_labels": pos_targets["input_ids"],
+            "neg_labels": neg_targets["input_ids"]
+        }
 
 def get_loader(dataset, split, tokenizer, T=5, debug=False):
     """
@@ -100,20 +102,20 @@ def get_loader(dataset, split, tokenizer, T=5, debug=False):
         - split: str, one of 'train', 'validation', 'test'
         - T: int, number of previous clicked articles to consider
     """
-    # TODO geef tokenizer mee hier
     # test werkt nog niet
     assert dataset in ['demo', 'large'], 'dataset should be one of demo, large'
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
-    data = EkstraBladetDataset(create_prompt, tokenizer, dataset=dataset, split=split, T=T, debug=debug)
+    collator = Collator(tokenizer)
+    data = EkstraBladetDataset(create_prompt, dataset=dataset, split=split, T=T, debug=debug)
 
-    return DataLoader(data, batch_size=1, collate_fn=collate_fn, shuffle=True)
+    return DataLoader(data, batch_size=4, collate_fn=collator, shuffle=True)
 
 
 if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("google/mt5-base")
-
-    train_loader = get_loader('large', 'train', tokenizer, T=5, debug=True)
+    collator = Collator(tokenizer)
+    train_loader = get_loader('large', 'train', collator, T=5, debug=True)
 
     import time 
     num_samples = 1

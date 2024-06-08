@@ -12,21 +12,20 @@ import json
 from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 
+
 def compute_rank_loss(logits_pos, logits_neg):
     r_pos = torch.sigmoid(logits_pos)
     r_neg = torch.sigmoid(logits_neg)
     diff = torch.sigmoid(r_pos - r_neg)
-    return torch.log(1e-8 + diff)
+    return -torch.log(1e-8 + diff)
 
 def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=2048)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=2048)
-    data_loader = get_loader(args.dataset, 'train', tokenizer, T=5, debug=False)
-    ce = CrossEntropyLoss()
+    ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
 
@@ -34,38 +33,35 @@ def train(args):
         model.train()
         total_loss = 0
 
-        for idx, (input_pos, input_neg) in tqdm(enumerate(data_loader)):
-
-            batch_size = input_pos["pos_input_ids"].shape[0]
-
-            decoder_input = tokenizer([""]*batch_size, return_tensors="pt")
+        for idx, batch in tqdm(enumerate(data_loader)):
 
             # forward pass for the positive and negative examples
-            outputs_pos = model.base_model(
-                input_ids=input_pos["pos_input_ids"].to(device), 
-                attention_mask=input_pos["pos_attention_mask"].to(device),
-                decoder_input_ids=decoder_input["input_ids"].to(device),
-                decoder_attention_mask=decoder_input["attention_mask"].to(device)
+            pos_outputs = model(
+                input_ids=batch["pos_input_ids"].to(device), 
+                attention_mask=batch["pos_attention_mask"].to(device),
+                decoder_input_ids=batch["pos_labels"].to(device),
             )
-            outputs_neg = model.base_model(
-                input_ids=input_neg["neg_input_ids"].to(device), 
-                attention_mask=input_neg["neg_attention_mask"].to(device),
-                decoder_input_ids=decoder_input["input_ids"].to(device),
-                decoder_attention_mask=decoder_input["attention_mask"].to(device)
+            neg_outputs = model(
+                input_ids=batch["neg_input_ids"].to(device),
+                attention_mask=batch["neg_attention_mask"].to(device),
+                decoder_input_ids=batch["neg_labels"].to(device),
             )
 
-            # logits = [yes,no] (magic numbers = token idxs for 'yes' and 'no')
-            logits_pos = torch.stack((outputs_pos.logits[:,-1,36399], outputs_pos.logits[:,-1,375]), dim=1)
-            logits_neg = torch.stack((outputs_neg.logits[:,-1,36399], outputs_neg.logits[:,-1,375]), dim=1)
+            # only take the first token (should be 'yes' or 'no')
+            pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
+            neg_logits = neg_outputs.logits[:,0,:]
 
-            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
-            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
-            target_pos = torch.tensor([1,0],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
-            target_neg = torch.tensor([0,1],dtype=torch.float).unsqueeze(0).repeat(batch_size,1)
+            # 36339 is the token id for 'yes'
+            pos_logits_yes = pos_logits[:, 36339]  # B, V -> B
+            neg_logits_yes = neg_logits[:, 36339]
+
+            # same for the targets that store one of the V labels
+            pos_target = batch["pos_labels"][:,0]  # B, T -> B
+            neg_target = batch["neg_labels"][:,0]
 
             # compute loss
-            loss_nll = ce(logits_pos, target_pos) + ce(logits_neg, target_neg)
-            loss_bpr = -compute_rank_loss(logits_pos[0], logits_neg[0]).mean(dim=0)
+            loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+            loss_bpr = compute_rank_loss(pos_logits_yes, neg_logits_yes).mean(dim=0)
             loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
 
             # backward pass
