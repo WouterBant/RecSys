@@ -51,21 +51,21 @@ def evaluate(args, model, tokenizer, T, split='validation'):
         loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
         loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
         accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
-        results["loss_nll"].append(loss_nll)
-        results["loss_bpt"].append(loss_bpr)
-        results["loss"].append(loss)
-        results["accuracy"].append(accuracy)
+        results["loss_nll"].append(loss_nll.item())
+        results["loss_bpr"].append(loss_bpr.item())
+        results["loss"].append(loss.item())
+        results["accuracy"].append(accuracy.item())
 
     # Convert lists in results to tensors
     for key in results:
-        results[key] = torch.stack(results[key])
+        results[key] = torch.Tensor(results[key])
 
     # Compute mean and standard deviation
     mean_results = {}
     std_results = {}
     for key, value in results.items():
         mean_results[key] = torch.mean(value).item()
-        std_results[key] = torch.std(value).item()
+        std_results['std_'+key] = torch.std(value).item()
     
     return mean_results, std_results
 

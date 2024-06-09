@@ -16,4 +16,3 @@ dependencies:
   - sentencepiece
   - protobuf
   - wandb
-  - numpy

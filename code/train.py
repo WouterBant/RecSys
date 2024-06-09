@@ -3,6 +3,7 @@ from datetime import datetime
 from models import get_model
 from dataloader import get_loader
 import torch
+from torch import nn
 from evaluate import evaluate
 import copy
 import wandb
@@ -13,6 +14,7 @@ from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 from scheduler import CosineWarmupScheduler
 from utils import compute_rank_loss
+from torch.cuda.amp import GradScaler, autocast
 
 
 def train(args):
@@ -22,6 +24,15 @@ def train(args):
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     data_loader = get_loader(args, 'train', tokenizer, T=args.T, debug=False)
 
+    if args.use_classifier:
+        classifier = nn.Sequential(
+            nn.Linear(250112, 512),
+            nn.SiLU(),
+            nn.Linear(512, 2)
+        ).to(device)
+        optimizer = torch.optim.AdamW(list(model.parameters()) + list(classifier.parameters()), lr=args.lr)
+        ce_classifier = CrossEntropyLoss()
+
     if args.use_wandb:
         # TODO add more
         wandb.log({
@@ -30,10 +41,11 @@ def train(args):
         })
 
     # TODO fix the hardcoding here
-    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=500, total_steps=len(data_loader) * args.n_epochs)
+    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=5000, total_steps=len(data_loader) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
+    scaler = GradScaler()
 
     for epoch in tqdm(range(args.n_epochs)):
         model.train()
@@ -57,25 +69,55 @@ def train(args):
             pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
             neg_logits = neg_outputs.logits[:,0,:]
 
-            # 36339 is the token id for 'ja'
-            pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
-            neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
+            if args.use_classifier:
+                with autocast():
+                    pos_classifier_logits = classifier(pos_logits)
+                    neg_classifier_logits = classifier(neg_logits)
 
-            # Same for the targets that store one of the V labels
-            pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
-            neg_target = batch["neg_labels"][:,0].to(device)
+                wandb.log({
+                    "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
+                    "neg_classifier_logits": neg_classifier_logits.mean(0)[0]
+                })
 
-            # Compute loss
-            loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
-            loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
-            loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+                pos_labels = torch.ones(pos_classifier_logits.size(0), dtype=torch.long, device=device)  # All positive samples are labeled 1
+                neg_labels = torch.zeros(neg_classifier_logits.size(0), dtype=torch.long, device=device)  # All negative samples are labeled 0
+
+                loss_pos_classifier = ce_classifier(pos_classifier_logits, pos_labels)
+                loss_neg_classifier = ce_classifier(neg_classifier_logits, neg_labels)
+
+                pos_prob_yes = torch.softmax(pos_classifier_logits, dim=-1)[1]
+                neg_prob_yes = torch.softmax(neg_classifier_logits, dim=-1)[1]
+
+                loss_nll = loss_pos_classifier + loss_neg_classifier
+                loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+                loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+
+            else:
+                # 36339 is the token id for 'ja'
+                pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
+                neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
+
+                # Same for the targets that store one of the V labels
+                pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
+                neg_target = batch["neg_labels"][:,0].to(device)
+
+                # Compute loss
+                loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+                loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+                loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
 
             # Backward pass
             optimizer.zero_grad()
-            loss.backward()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+            if args.use_classifier:
+                torch.nn.utils.clip_grad_norm_(classifier.parameters(), 0.5)
 
             # Update weights
-            optimizer.step()
+            # optimizer.step()
             cur_lr = scheduler.step()
             total_loss += loss.item()
 
@@ -84,7 +126,9 @@ def train(args):
                 wandb.log({
                     'batch_loss': loss.item(),
                     'batch_accuracy': accuracy,
-                    'lr': cur_lr
+                    'lr': cur_lr,
+                    'avg_pos_prob_yes': pos_prob_yes.mean(),
+                    'avg_neg_prob_yes': neg_prob_yes.mean(),
                 })
 
         if args.use_wandb:
@@ -99,16 +143,16 @@ def train(args):
                 wandb.log(std_results)
             
             # TODO fix this, just ndcg or someting
-            if results['metric'] > best_metric:
+            if mean_results['accuracy'] > best_metric:
                 best_metric = mean_results['accuracy']
                 best_model = copy.deepcopy(model.state_dict())
     
     # test
     model.load_state_dict(best_model)
     model.eval()
-    results = evaluate(model, 'test')
-    if args.use_wandb:
-        wandb.log(results)  # TODO fix this + say it is for test set
+    # results = evaluate(model, 'test')
+    # if args.use_wandb:
+    #     wandb.log(results)  # TODO fix this + say it is for test set
 
     final_model = copy.deepcopy(model.state_dict())
     return results, final_model, best_model
@@ -123,9 +167,10 @@ def argparser():
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
-    parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
+    parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')

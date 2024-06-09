@@ -23,7 +23,7 @@ class EkstraBladetDataset(Dataset):
         self.debug = debug
 
     def __len__(self):
-        return int(0.01*len(self.behaviors))
+        return int(0.31*len(self.behaviors))
 
     def __getitem__(self, idx):
         # Every item consits of a positive and negative sample
