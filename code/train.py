@@ -12,27 +12,25 @@ import json
 from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 from scheduler import CosineWarmupScheduler
+from utils import compute_rank_loss
 
-
-# def compute_rank_loss(logits_pos, logits_neg):  # og
-#     r_pos = torch.sigmoid(logits_pos)
-#     r_neg = torch.sigmoid(logits_neg)
-#     diff = torch.sigmoid(r_pos - r_neg)
-#     return -torch.log(1e-8 + diff)
-
-def compute_rank_loss(prob_pos, prob_neg):
-    diff = torch.sigmoid(prob_pos - prob_neg)
-    return -torch.log(1e-8 + diff)
 
 def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader = get_loader(args, 'train', tokenizer, T=4, debug=False)
+    data_loader = get_loader(args, 'train', tokenizer, T=args.T, debug=False)
+
+    if args.use_wandb:
+        # TODO add more
+        wandb.log({
+            "T": args.T,
+            "lambda": args.labda,
+        })
 
     # TODO fix the hardcoding here
-    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=5, total_steps=len(data_loader) * args.n_epochs)
+    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=500, total_steps=len(data_loader) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
@@ -78,28 +76,32 @@ def train(args):
 
             # Update weights
             optimizer.step()
-            scheduler.step()
+            cur_lr = scheduler.step()
             total_loss += loss.item()
 
             if args.use_wandb and args.debug:
-                wandb.log({'batch_loss': loss.item()})
                 accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
-                wandb.log({'batch_accuracy': accuracy})
+                wandb.log({
+                    'batch_loss': loss.item(),
+                    'batch_accuracy': accuracy,
+                    'lr': cur_lr
+                })
 
         if args.use_wandb:
             wandb.log({'epoch_loss': total_loss / len(data_loader)})
         
         # validation
-        # if (epoch + 1) % args.eval_interval == 0:
-        #     results = evaluate(model, 'dev')
+        if (epoch + 1) % args.eval_interval == 0:
+            mean_results, std_results = evaluate(args, model, tokenizer, args.T, 'validation')
 
-        #     if args.use_wandb:
-        #         wandb.log(results)  # this will not work but do this for all metrics
+            if args.use_wandb:
+                wandb.log(mean_results)
+                wandb.log(std_results)
             
-        #     # TODO fix this, just ndcg or someting
-        #     if results['metric'] > best_metric:
-        #         best_metric = results['metric']
-        #         best_model = copy.deepcopy(model.state_dict())
+            # TODO fix this, just ndcg or someting
+            if results['metric'] > best_metric:
+                best_metric = mean_results['accuracy']
+                best_model = copy.deepcopy(model.state_dict())
     
     # test
     model.load_state_dict(best_model)
@@ -124,6 +126,7 @@ def argparser():
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
     parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')

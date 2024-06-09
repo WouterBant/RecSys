@@ -24,3 +24,5 @@ class CosineWarmupScheduler:
         wandb.log({'lr': lr})
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr
+
+        return lr

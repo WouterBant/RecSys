@@ -11,7 +11,7 @@ class EkstraBladetDataset(Dataset):
         
         # Download the dataset from huggingface
         self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"{dataset}_data")[split]
-        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"{dataset}_data")[split].to_pandas()
+        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"{dataset}_data")["train"].to_pandas()
         self.history = load_dataset(f'Wouter01/RecSys_{dataset}', 'history', cache_dir=f"{dataset}_data")[split].to_pandas()
 
         # Set fast lookup for identifier keys
@@ -23,7 +23,7 @@ class EkstraBladetDataset(Dataset):
         self.debug = debug
 
     def __len__(self):
-        return len(self.behaviors)
+        return int(0.01*len(self.behaviors))
 
     def __getitem__(self, idx):
         # Every item consits of a positive and negative sample
