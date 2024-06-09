@@ -11,6 +11,7 @@ import os
 import json
 from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
+from scheduler import CosineWarmupScheduler
 
 
 # def compute_rank_loss(logits_pos, logits_neg):  # og
@@ -29,6 +30,9 @@ def train(args):
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     data_loader = get_loader(args, 'train', tokenizer, T=4, debug=False)
+
+    # TODO fix the hardcoding here
+    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=5, total_steps=len(data_loader) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
@@ -74,6 +78,7 @@ def train(args):
 
             # Update weights
             optimizer.step()
+            scheduler.step()
             total_loss += loss.item()
 
             if args.use_wandb and args.debug:
