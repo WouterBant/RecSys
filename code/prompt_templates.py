@@ -6,8 +6,8 @@
 #     return prompt
 
 def create_prompt(titles, subtitles, title, subtitle):
-    prompt = f"En bruger har for nylig læst artikler:\n"
+    prompt = f"En bruger har for nylig læst artikler: "
     for i, (t, s) in enumerate(zip(titles, subtitles)):
-        prompt += f"{t} "
-    prompt += f", vil brugeren læse artiklen {title}? (ja/nej)\n"
+        prompt += f"{s}, "
+    prompt += f"vil brugeren læse artiklen {subtitle}? (ja/nej)\n"
     return prompt

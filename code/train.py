@@ -41,7 +41,7 @@ def train(args):
         })
 
     # TODO fix the hardcoding here
-    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=5000, total_steps=len(data_loader) * args.n_epochs)
+    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=500, total_steps=len(data_loader) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     best_metric, best_model = 0, None
@@ -112,12 +112,6 @@ def train(args):
             scaler.step(optimizer)
             scaler.update()
 
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
-            if args.use_classifier:
-                torch.nn.utils.clip_grad_norm_(classifier.parameters(), 0.5)
-
-            # Update weights
-            # optimizer.step()
             cur_lr = scheduler.step()
             total_loss += loss.item()
 
@@ -141,7 +135,7 @@ def train(args):
             if args.use_wandb:
                 wandb.log(mean_results)
                 wandb.log(std_results)
-            
+
             # TODO fix this, just ndcg or someting
             if mean_results['accuracy'] > best_metric:
                 best_metric = mean_results['accuracy']

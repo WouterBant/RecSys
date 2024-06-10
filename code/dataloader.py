@@ -10,9 +10,9 @@ class EkstraBladetDataset(Dataset):
     def __init__(self, create_prompt, dataset="demo", split="train", T=5, debug=False):
         
         # Download the dataset from huggingface
-        self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"{dataset}_data")[split]
-        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"{dataset}_data")["train"].to_pandas()
-        self.history = load_dataset(f'Wouter01/RecSys_{dataset}', 'history', cache_dir=f"{dataset}_data")[split].to_pandas()
+        self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"../../{dataset}_data")[split]
+        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"../../{dataset}_data")["train"].to_pandas()
+        self.history = load_dataset(f'Wouter01/RecSys_{dataset}', 'history', cache_dir=f"../../{dataset}_data")[split].to_pandas()
 
         # Set fast lookup for identifier keys
         self.history.set_index("user_id", inplace=True)
@@ -23,7 +23,7 @@ class EkstraBladetDataset(Dataset):
         self.debug = debug
 
     def __len__(self):
-        return int(0.31*len(self.behaviors))
+        return len(self.behaviors)
 
     def __getitem__(self, idx):
         # Every item consits of a positive and negative sample
@@ -70,6 +70,48 @@ class EkstraBladetDataset(Dataset):
             print("history", history)
             print("pos_prompt", pos_prompt)
             print("neg_prompt", neg_prompt)
+
+        if False:
+            # List 1
+            danish_phrases_1 = [
+                "Godmorgen", 
+                "Godaften", 
+                "Hvordan har du det?", 
+                "Jeg har det godt, tak.", 
+                "Hvad hedder du?", 
+                "Mit navn er...", 
+                "Hvor kommer du fra?", 
+                "Jeg kommer fra...", 
+                "Hvor gammel er du?", 
+                "Jeg er ... år gammel.", 
+                "Tak for hjælpen.", 
+                "Vær venlig.", 
+                "Undskyld.", 
+                "Jeg elsker dig.", 
+                "Hvor er toilettet?"
+            ]
+
+            # List 2
+            danish_phrases_2 = [
+                "Kan du tale engelsk?", 
+                "Hvad koster det?", 
+                "Jeg forstår ikke.", 
+                "Gentag, venligst.", 
+                "Hvornår åbner det?", 
+                "Hvornår lukker det?", 
+                "Kan du hjælpe mig?", 
+                "Jeg vil gerne have...", 
+                "Hvad tid er det?", 
+                "Kan jeg få regningen?", 
+                "Hvor er nærmeste busstoppested?", 
+                "Kan du anbefale en restaurant?", 
+                "God rejse!", 
+                "Det var hyggeligt at møde dig.", 
+                "Hav en god dag!"
+            ]
+            # print('hi')
+            a = "oibn djsfh kjsl klsjfeij skjf ksjdf klejsf skljf slkjf skn ojeujbq: ja nej"
+            return random.choice(danish_phrases_1) + a, random.choice(danish_phrases_2) + a
 
         return pos_prompt, neg_prompt
 
