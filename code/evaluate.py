@@ -20,6 +20,7 @@ def evaluate(args, model, tokenizer, data_loader):
 
     model.to(device)
     model.eval()
+    total = 0
 
     for batch in tqdm(data_loader):
         # Forward pass for the positive and negative examples
@@ -27,12 +28,12 @@ def evaluate(args, model, tokenizer, data_loader):
             pos_outputs = model(
                 input_ids=batch["pos_input_ids"].to(device), 
                 attention_mask=batch["pos_attention_mask"].to(device),
-                labels=batch["pos_labels"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device)
             )
             neg_outputs = model(
                 input_ids=batch["neg_input_ids"].to(device),
                 attention_mask=batch["neg_attention_mask"].to(device),
-                labels=batch["neg_labels"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device)
             )
 
         # Only take the first token (should be 'ja' or 'nej')
@@ -52,17 +53,15 @@ def evaluate(args, model, tokenizer, data_loader):
         loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
         loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
         
-        accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
+        accuracy = (pos_prob_yes > neg_prob_yes).float().sum()
         results["loss_nll"] += loss_nll.item()
         results["loss_bpr"] += loss_bpr.item()
         results["loss"] += loss.item()
-        results["accuracy"] += accuracy.item()
-        results["total"] += batch["pos_input_ids"].size(0)
- 
-    # Divide by the number of samples
+        results["accuracy"] += accuracy.item() 
+        total += batch["pos_input_ids"].size(0)
+    
     for key in results:
-        results[key] /= results["total"]
-    del results["total"]
+        results[key] /= total
     
     return results
 
