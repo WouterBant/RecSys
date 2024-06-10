@@ -7,23 +7,24 @@ from prompt_templates import create_prompt
 
 class EkstraBladetDataset(Dataset):
 
-    def __init__(self, create_prompt, dataset="demo", split="train", T=5, debug=False):
+    def __init__(self, args, create_prompt, split="train", debug=False):
         
         # Download the dataset from huggingface
-        self.behaviors = load_dataset(f'Wouter01/RecSys_{dataset}', 'behaviors', cache_dir=f"../../{dataset}_data")[split]
-        self.articles = load_dataset(f'Wouter01/RecSys_{dataset}', 'articles', cache_dir=f"../../{dataset}_data")["train"].to_pandas()
-        self.history = load_dataset(f'Wouter01/RecSys_{dataset}', 'history', cache_dir=f"../../{dataset}_data")[split].to_pandas()
+        self.behaviors = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'behaviors', cache_dir=f"../../{args.dataset}_data")[split]
+        self.articles = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'articles', cache_dir=f"../../{args.dataset}_data")["train"].to_pandas()
+        self.history = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'history', cache_dir=f"../../{args.dataset}_data")[split].to_pandas()
 
         # Set fast lookup for identifier keys
         self.history.set_index("user_id", inplace=True)
         self.articles.set_index("article_id", inplace=True)
 
-        self.T = T  # Number of previous clicked articles to consider
+        self.T = args.T  # Number of previous clicked articles to consider
         self.create_prompt = create_prompt  # Function to create a prompt from the data
         self.debug = debug
+        self.datafraction = args.datafraction
 
     def __len__(self):
-        return len(self.behaviors)
+        return int(self.datafraction*len(self.behaviors))
 
     def __getitem__(self, idx):
         # Every item consits of a positive and negative sample
@@ -71,48 +72,6 @@ class EkstraBladetDataset(Dataset):
             print("pos_prompt", pos_prompt)
             print("neg_prompt", neg_prompt)
 
-        if False:
-            # List 1
-            danish_phrases_1 = [
-                "Godmorgen", 
-                "Godaften", 
-                "Hvordan har du det?", 
-                "Jeg har det godt, tak.", 
-                "Hvad hedder du?", 
-                "Mit navn er...", 
-                "Hvor kommer du fra?", 
-                "Jeg kommer fra...", 
-                "Hvor gammel er du?", 
-                "Jeg er ... år gammel.", 
-                "Tak for hjælpen.", 
-                "Vær venlig.", 
-                "Undskyld.", 
-                "Jeg elsker dig.", 
-                "Hvor er toilettet?"
-            ]
-
-            # List 2
-            danish_phrases_2 = [
-                "Kan du tale engelsk?", 
-                "Hvad koster det?", 
-                "Jeg forstår ikke.", 
-                "Gentag, venligst.", 
-                "Hvornår åbner det?", 
-                "Hvornår lukker det?", 
-                "Kan du hjælpe mig?", 
-                "Jeg vil gerne have...", 
-                "Hvad tid er det?", 
-                "Kan jeg få regningen?", 
-                "Hvor er nærmeste busstoppested?", 
-                "Kan du anbefale en restaurant?", 
-                "God rejse!", 
-                "Det var hyggeligt at møde dig.", 
-                "Hav en god dag!"
-            ]
-            # print('hi')
-            a = "oibn djsfh kjsl klsjfeij skjf ksjdf klejsf skljf slkjf skn ojeujbq: ja nej"
-            return random.choice(danish_phrases_1) + a, random.choice(danish_phrases_2) + a
-
         return pos_prompt, neg_prompt
 
 class Collator:
@@ -127,8 +86,7 @@ class Collator:
         with self.tokenizer.as_target_tokenizer():
             pos_targets = self.tokenizer(['ja' for _ in batch], return_tensors="pt", padding=True, truncation=True)
             neg_targets = self.tokenizer(['nej' for _ in batch], return_tensors="pt", padding=True, truncation=True)
-        
-        empt = self.tokenizer(['<s>' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+            decoder_start = self.tokenizer(['ja / nej' for _ in batch], return_tensors="pt", padding=True, truncation=True)
         
         return {
             "pos_input_ids": pos_inputs["input_ids"],
@@ -137,23 +95,17 @@ class Collator:
             "neg_attention_mask": neg_inputs["attention_mask"],
             "pos_labels": pos_targets["input_ids"],
             "neg_labels": neg_targets["input_ids"],
-            "empt": empt["input_ids"]
+            "decoder_start": decoder_start["input_ids"]
         }
 
-def get_loader(args, split, tokenizer, T=5, debug=False):
-    """
-    input:
-        - args
-        - split: str, one of 'train', 'validation', 'test'
-        - T: int, number of previous clicked articles to consider
-    """
+def get_loader(args, split, tokenizer, debug=False):
+
     # test werkt nog niet
     assert args.dataset in ['demo', 'large'], 'dataset should be one of demo, large'
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
     collator = Collator(tokenizer)
-    data = EkstraBladetDataset(create_prompt, dataset=args.dataset, split=split, T=T, debug=debug)
-
+    data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
     return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
 
 

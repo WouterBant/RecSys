@@ -15,7 +15,7 @@ def evaluate(args, model, tokenizer, T, split='validation'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     results = defaultdict(list)
 
-    data_loader = get_loader(args, split, tokenizer, T, debug=False)
+    data_loader = get_loader(args, split, tokenizer)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     model.to(device)

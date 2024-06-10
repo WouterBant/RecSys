@@ -14,7 +14,7 @@ from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 from scheduler import CosineWarmupScheduler
 from utils import compute_rank_loss
-from torch.cuda.amp import GradScaler, autocast
+from torch.cuda.amp import GradScaler
 
 
 def train(args):
@@ -22,7 +22,7 @@ def train(args):
     model = get_model(args).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader = get_loader(args, 'train', tokenizer, T=args.T, debug=False)
+    data_loader = get_loader(args, 'train', tokenizer)
 
     if args.use_classifier:
         classifier = nn.Sequential(
@@ -57,12 +57,12 @@ def train(args):
             pos_outputs = model(
                 input_ids=batch["pos_input_ids"].to(device), 
                 attention_mask=batch["pos_attention_mask"].to(device),
-                labels=batch["pos_labels"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device),
             )
             neg_outputs = model(
                 input_ids=batch["neg_input_ids"].to(device),
                 attention_mask=batch["neg_attention_mask"].to(device),
-                labels=batch["neg_labels"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device),
             )
 
             # Only take the first token (should be 'ja' or 'nej')
@@ -70,9 +70,8 @@ def train(args):
             neg_logits = neg_outputs.logits[:,0,:]
 
             if args.use_classifier:
-                with autocast():
-                    pos_classifier_logits = classifier(pos_logits)
-                    neg_classifier_logits = classifier(neg_logits)
+                pos_classifier_logits = classifier(pos_logits)
+                neg_classifier_logits = classifier(neg_logits)
 
                 wandb.log({
                     "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
@@ -169,6 +168,7 @@ def argparser():
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
     parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
+    parser.add_argument('--datafraction', type=float, default=1.0, help='fraction of data to use')
     args = parser.parse_args()
     return args
 
