@@ -70,45 +70,59 @@ def train(args):
                 decoder_input_ids=batch["decoder_start"].to(device),
             )
 
-            # Only take the first token (should be 'ja' or 'nej')
-            pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
-            neg_logits = neg_outputs.logits[:,0,:]
-
-            if args.use_classifier:
-                pos_classifier_logits = classifier(pos_logits)
-                neg_classifier_logits = classifier(neg_logits)
-
-                wandb.log({
-                    "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
-                    "neg_classifier_logits": neg_classifier_logits.mean(0)[0]
-                })
-
-                pos_labels = torch.ones(pos_classifier_logits.size(0), dtype=torch.long, device=device)  # All positive samples are labeled 1
-                neg_labels = torch.zeros(neg_classifier_logits.size(0), dtype=torch.long, device=device)  # All negative samples are labeled 0
-
-                loss_pos_classifier = ce_classifier(pos_classifier_logits, pos_labels)
-                loss_neg_classifier = ce_classifier(neg_classifier_logits, neg_labels)
-
-                pos_prob_yes = torch.softmax(pos_classifier_logits, dim=-1)[1]
-                neg_prob_yes = torch.softmax(neg_classifier_logits, dim=-1)[1]
-
-                loss_nll = loss_pos_classifier + loss_neg_classifier
-                loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
-                loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
-
-            else:
-                # 36339 is the token id for 'ja'
-                pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
-                neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
-
-                # Same for the targets that store one of the V labels
-                pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
-                neg_target = batch["neg_labels"][:,0].to(device)
-
-                # Compute loss
+            if args.use_QA_model:
+                pos_logits = pos_outputs.start_logits
+                neg_logits = neg_outputs.start_logits
+                pos_probs = torch.softmax(pos_logits, dim=-1)  # B, V -> B,V
+                neg_probs = torch.softmax(neg_logits, dim=-1)
+                batch_size = pos_probs.shape[0]
+                pos_target = torch.tensor(batch_size * [0]).to(device) # 0 = idx of 'ja' token in decoder input sequence 
+                neg_target = torch.tensor(batch_size * [3]).to(device) # 3 = idx of 'nej' token in decoder input sequence
                 loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+                pos_prob_yes = pos_probs[0]
+                neg_prob_yes = neg_probs[0]
                 loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
                 loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+            else:
+                # Only take the first token (should be 'ja' or 'nej')
+                pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
+                neg_logits = neg_outputs.logits[:,0,:]
+
+                if args.use_classifier:
+                    pos_classifier_logits = classifier(pos_logits)
+                    neg_classifier_logits = classifier(neg_logits)
+
+                    wandb.log({
+                        "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
+                        "neg_classifier_logits": neg_classifier_logits.mean(0)[0]
+                    })
+
+                    pos_labels = torch.ones(pos_classifier_logits.size(0), dtype=torch.long, device=device)  # All positive samples are labeled 1
+                    neg_labels = torch.zeros(neg_classifier_logits.size(0), dtype=torch.long, device=device)  # All negative samples are labeled 0
+
+                    loss_pos_classifier = ce_classifier(pos_classifier_logits, pos_labels)
+                    loss_neg_classifier = ce_classifier(neg_classifier_logits, neg_labels)
+
+                    pos_prob_yes = torch.softmax(pos_classifier_logits, dim=-1)[1]
+                    neg_prob_yes = torch.softmax(neg_classifier_logits, dim=-1)[1]
+
+                    loss_nll = loss_pos_classifier + loss_neg_classifier
+                    loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+                    loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+
+                else:
+                    # 36339 is the token id for 'ja'
+                    pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
+                    neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
+
+                    # Same for the targets that store one of the V labels
+                    pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
+                    neg_target = batch["neg_labels"][:,0].to(device)
+
+                    # Compute loss
+                    loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+                    loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+                    loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
 
             # Backward pass
             optimizer.zero_grad()
@@ -169,6 +183,7 @@ def argparser():
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
+    parser.add_argument('--use_QA_model', action='store_true', help='use classifier on top of positive logits')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
