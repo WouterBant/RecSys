@@ -9,30 +9,32 @@ from datetime import datetime
 import os
 from utils import compute_rank_loss
 from torch.nn import CrossEntropyLoss
+from tqdm import tqdm
 
 
-def evaluate(args, model, tokenizer, T, split='validation'):
+def evaluate(args, model, tokenizer, data_loader):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    results = defaultdict(list)
+    results = defaultdict(int)
 
-    data_loader = get_loader(args, split, tokenizer)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     model.to(device)
     model.eval()
+    total = 0
 
-    for batch in data_loader:
+    for batch in tqdm(data_loader):
         # Forward pass for the positive and negative examples
-        pos_outputs = model(
-            input_ids=batch["pos_input_ids"].to(device), 
-            attention_mask=batch["pos_attention_mask"].to(device),
-            labels=batch["pos_labels"].to(device),
-        )
-        neg_outputs = model(
-            input_ids=batch["neg_input_ids"].to(device),
-            attention_mask=batch["neg_attention_mask"].to(device),
-            labels=batch["neg_labels"].to(device),
-        )
+        with torch.no_grad():
+            pos_outputs = model(
+                input_ids=batch["pos_input_ids"].to(device), 
+                attention_mask=batch["pos_attention_mask"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device)
+            )
+            neg_outputs = model(
+                input_ids=batch["neg_input_ids"].to(device),
+                attention_mask=batch["neg_attention_mask"].to(device),
+                decoder_input_ids=batch["decoder_start"].to(device)
+            )
 
         # Only take the first token (should be 'ja' or 'nej')
         pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
@@ -50,24 +52,18 @@ def evaluate(args, model, tokenizer, T, split='validation'):
         loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
         loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
         loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
-        accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
-        results["loss_nll"].append(loss_nll.item())
-        results["loss_bpr"].append(loss_bpr.item())
-        results["loss"].append(loss.item())
-        results["accuracy"].append(accuracy.item())
-
-    # Convert lists in results to tensors
-    for key in results:
-        results[key] = torch.Tensor(results[key])
-
-    # Compute mean and standard deviation
-    mean_results = {}
-    std_results = {}
-    for key, value in results.items():
-        mean_results[key] = torch.mean(value).item()
-        std_results['std_'+key] = torch.std(value).item()
+        
+        accuracy = (pos_prob_yes > neg_prob_yes).float().sum()
+        results["loss_nll"] += loss_nll.item()
+        results["loss_bpr"] += loss_bpr.item()
+        results["loss"] += loss.item()
+        results["accuracy"] += accuracy.item() 
+        total += batch["pos_input_ids"].size(0)
     
-    return mean_results, std_results
+    for key in results:
+        results[key] /= total
+    
+    return results
 
 
 def argparser():
