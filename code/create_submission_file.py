@@ -11,11 +11,66 @@ from utils import compute_rank_loss
 from torch.nn import CrossEntropyLoss
 from tqdm import tqdm
 
+# TODO make this file working
 
-def evaluate(args, model, tokenizer, data_loader):
+import torch
+from tqdm import tqdm
+import numpy as np
+
+def generate_and_write_predictions(args, output_filename="predictions.txt"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    results = defaultdict(int)
+    data_loader = get_loader(args, 'test')
+    model.eval()
+    
+    with open(output_filename, 'w') as f, torch.no_grad():
+        for batch in tqdm(data_loader):
+            user_ids = batch["user_ids"]
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            decoder_input_ids = batch["decoder_start"].to(device)
 
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                decoder_input_ids=decoder_input_ids
+            )
+            logits = outputs.logits.cpu().numpy()
+
+            for user_id, user_logits in zip(user_ids, logits):
+                # Compute scores (assuming logits are directly the scores)
+                scores = np.max(user_logits, axis=1)  # or any other method to compute scores
+                sorted_indices = np.argsort(scores)[::-1]  # Sort indices by scores in descending order
+
+                # Convert sorted indices to string
+                indices_str = ' '.join(map(str, sorted_indices))
+                
+                # Write to file
+                f.write(f"{user_id}\t{indices_str}\n")
+
+def main():
+    args = argparser()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = get_model(args).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
+    data_loader = get_loader(args, 'test', tokenizer)
+
+    # Load checkpoint if available
+    if args.from_checkpoint:
+        model.load_state_dict(torch.load(args.from_checkpoint))
+
+    # Generate predictions and write to file
+    output_filename = 'submission.txt'
+    generate_and_write_predictions(model, data_loader, device, output_filename)
+
+if __name__ == '__main__':
+    main()
+
+
+def create_submission_files(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    results = defaultdict(list)
+
+    data_loader = get_loader(args, split, tokenizer)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     model.to(device)
@@ -51,20 +106,24 @@ def evaluate(args, model, tokenizer, data_loader):
         loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
         loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
         loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
-        
         accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
-        results["loss_nll"] += loss_nll.item()
-        results["loss_bpr"] += loss_bpr.item()
-        results["loss"] += loss.item()
-        results["accuracy"] += accuracy.item()
-        results["total"] += batch["pos_input_ids"].size(0)
- 
-    # Divide by the number of samples
+        results["loss_nll"].append(loss_nll.item())
+        results["loss_bpr"].append(loss_bpr.item())
+        results["loss"].append(loss.item())
+        results["accuracy"].append(accuracy.item())
+
+    # Convert lists in results to tensors
     for key in results:
-        results[key] /= results["total"]
-    del results["total"]
+        results[key] = torch.Tensor(results[key])
+
+    # Compute mean and standard deviation
+    mean_results = {}
+    std_results = {}
+    for key, value in results.items():
+        mean_results[key] = torch.mean(value).item()
+        std_results['std_'+key] = torch.std(value).item()
     
-    return results
+    return mean_results, std_results
 
 
 def argparser():
@@ -72,7 +131,6 @@ def argparser():
     parser.add_argument('--backbone', type=str, default='t5-small', help='backbone model')
     parser.add_argument('--tokenizer', type=str, default='t5-small', help='tokenizer model')
     parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
-    parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
     args = parser.parse_args()
