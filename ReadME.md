@@ -1,6 +1,10 @@
 ## PGNR
 Source code for the paper 'The Prompt-based Generative News Recommender System' 
 
+
+## TODO
+modellen vanuit checkpoint laden overal waar we nu een model laden als optie
+
 ## List of special tokens
 
 - -100: padding token

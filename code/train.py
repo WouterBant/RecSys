@@ -44,6 +44,7 @@ def train(args):
     # TODO fix the hardcoding here
     scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=15000, total_steps=len(data_loader_train) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    scheduler.current_step = args.current_step
 
     best_metric, best_model = 0, None
     scaler = GradScaler()
@@ -57,6 +58,7 @@ def train(args):
             
             if n_steps % 1000 == 0:
                 torch.save(model.state_dict(), "model.pth")
+            n_steps += 1
 
             # Forward pass for the positive and negative examples
             pos_outputs = model(
@@ -177,13 +179,14 @@ def argparser():
     parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
+    parser.add_argument('--current_step', type=int, default=0, help='starting step for cosine learning rate')
     parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
-    parser.add_argument('--use_QA_model', action='store_true', help='use classifier on top of positive logits')
+    parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
