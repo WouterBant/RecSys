@@ -36,23 +36,37 @@ def evaluate(args, model, tokenizer, data_loader):
                 decoder_input_ids=batch["decoder_start"].to(device)
             )
 
-        # Only take the first token (should be 'ja' or 'nej')
-        pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
-        neg_logits = neg_outputs.logits[:,0,:]
+        if args.use_QA_model:
+            pos_logits = pos_outputs.start_logits
+            neg_logits = neg_outputs.start_logits
+            pos_probs = torch.softmax(pos_logits, dim=-1)  # B, V -> B,V
+            neg_probs = torch.softmax(neg_logits, dim=-1)
+            batch_size = pos_probs.shape[0]
+            pos_target = torch.tensor(batch_size * [0]).to(device) # 0 = idx of 'ja' token in decoder input sequence 
+            neg_target = torch.tensor(batch_size * [3]).to(device) # 3 = idx of 'nej' token in decoder input sequence
+            loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+            pos_prob_yes = pos_probs[0]
+            neg_prob_yes = neg_probs[0]
+            loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+            loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+        else:
+            # Only take the first token (should be 'ja' or 'nej')
+            pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
+            neg_logits = neg_outputs.logits[:,0,:]
 
-        # 36339 is the token id for 'ja'
-        pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
-        neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
+            # 36339 is the token id for 'ja'
+            pos_prob_yes = torch.softmax(pos_logits, dim=-1)[:, 432]  # B, V -> B
+            neg_prob_yes = torch.softmax(neg_logits, dim=-1)[:, 432]
 
-        # Same for the targets that store one of the V labels
-        pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
-        neg_target = batch["neg_labels"][:,0].to(device)
+            # Same for the targets that store one of the V labels
+            pos_target = batch["pos_labels"][:,0].to(device)  # B, T -> B
+            neg_target = batch["neg_labels"][:,0].to(device)
 
-        # Compute loss
-        loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
-        loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
-        loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
-        
+            # Compute loss
+            loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
+            loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
+            loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+
         accuracy = (pos_prob_yes > neg_prob_yes).float().sum()
         results["loss_nll"] += loss_nll.item()
         results["loss_bpr"] += loss_bpr.item()
