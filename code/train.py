@@ -183,7 +183,7 @@ def argparser():
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
-    parser.add_argument('--use_QA_model', action='store_true', help='use classifier on top of positive logits')
+    parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
