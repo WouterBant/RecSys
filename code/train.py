@@ -57,6 +57,7 @@ def train(args):
             
             if n_steps % 1000 == 0:
                 torch.save(model.state_dict(), "model.pth")
+            n_steps += 1
 
             # Forward pass for the positive and negative examples
             pos_outputs = model(
