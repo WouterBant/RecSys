@@ -44,6 +44,7 @@ def train(args):
     # TODO fix the hardcoding here
     scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=15000, total_steps=len(data_loader_train) * args.n_epochs)
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    scheduler.current_step = args.current_step
 
     best_metric, best_model = 0, None
     scaler = GradScaler()
@@ -178,6 +179,7 @@ def argparser():
     parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
+    parser.add_argument('--current_step', type=int, default=0, help='starting step for cosine learning rate')
     parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
