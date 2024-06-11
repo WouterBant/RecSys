@@ -181,7 +181,6 @@ def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backbone', type=str, default='google/mt5-small', help='backbone model')
     parser.add_argument('--tokenizer', type=str, default='google/mt5-small', help='tokenizer model')
-    parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--current_step', type=int, default=0, help='starting step for cosine learning rate')
