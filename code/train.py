@@ -43,7 +43,10 @@ def train(args):
 
     # TODO fix the hardcoding here
     scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=15000, total_steps=len(data_loader_train) * args.n_epochs)
-    ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    if args.use_QA_model:
+        ce = CrossEntropyLoss()
+    else:
+        ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
     scheduler.current_step = args.current_step
 
     best_metric, best_model = 0, None
@@ -80,11 +83,13 @@ def train(args):
                 batch_size = pos_probs.shape[0]
                 pos_target = torch.tensor(batch_size * [0]).to(device) # 0 = idx of 'ja' token in decoder input sequence 
                 neg_target = torch.tensor(batch_size * [3]).to(device) # 3 = idx of 'nej' token in decoder input sequence
+                print(pos_logits, pos_target)
                 loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
                 pos_prob_yes = pos_probs[0]
                 neg_prob_yes = neg_probs[0]
                 loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
                 loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
+                print(loss_nll, loss_bpr)
             else:
                 # Only take the first token (should be 'ja' or 'nej')
                 pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
