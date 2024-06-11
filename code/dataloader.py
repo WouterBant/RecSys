@@ -134,7 +134,7 @@ class CollatorTest:
         impression_ids = [i for prompts, i in batch for p in prompts]
         
         with self.tokenizer.as_target_tokenizer():
-            decoder_start = self.tokenizer(['ja / nej' for _ in batch], return_tensors="pt", padding=True, truncation=True)
+            decoder_start = self.tokenizer(['ja / nej' for prompts, _ in batch for p in prompts], return_tensors="pt", padding=True, truncation=True)
         
         return {
             "prompt_input_ids": prompts["input_ids"],

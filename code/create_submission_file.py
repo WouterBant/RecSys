@@ -35,25 +35,22 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
             prob_yes = torch.softmax(logits, dim=-1)[:, 432]
             prob_yes = prob_yes.tolist()
 
-            assert len(logits) == len(impression_id), print(len(logits), len(impression_id))
-            
             for p, i in zip(prob_yes, impression_id):
                 if previous_impression_id != i:
                     if previous_impression_id is not None:
                         # Write previous impression's predictions
                         sorted_idxs = np.argsort(np.array(impression_probs))+1
-                        f.write(f"{previous_impression_id} {sorted_idxs}\n")
+                        f.write(f"{previous_impression_id} [{','.join(map(str, sorted_idxs.tolist()))}]\n")
 
                     # Reset impression_logits and previous_impression_id
                     impression_probs = []
-                    previous_impression_id = impression_id
+                    previous_impression_id = i
 
                 impression_probs.append(p)
         
         # Don't forget to write the last impression's predictions
         sorted_idxs = np.argsort(np.array(impression_probs))
         f.write(f"{previous_impression_id}:\t{sorted_idxs}\n")
-
 
 def argparser():
     parser = argparse.ArgumentParser()
@@ -62,7 +59,7 @@ def argparser():
     parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--batch_size', type=int, default=1, help='batch size')
     parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
-    parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
+    parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--datafraction', type=float, default=1.0, help='fraction of data to use')
