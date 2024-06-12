@@ -60,7 +60,7 @@ def train(args):
         for batch in tqdm(data_loader_train):
             
             if n_steps % 1000 == 0:
-                torch.save(model.state_dict(), "model.pth")
+                torch.save(model.state_dict(), f"model_{args.lr}.pth")
             n_steps += 1
 
             # Forward pass for the positive and negative examples
