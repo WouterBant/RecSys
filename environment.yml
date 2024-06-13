@@ -16,3 +16,5 @@ dependencies:
   - sentencepiece
   - protobuf
   - wandb
+  - numpy
+  - scikit-learn

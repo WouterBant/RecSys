@@ -1,159 +1,105 @@
-import torch
 import numpy as np
+from sklearn.metrics import (
+    mean_squared_error,
+    accuracy_score,
+    f1_score,
+    log_loss,
+)
+from beyond_accuracy import (
+    intralist_diversity,
+    serendipity,
+    coverage_count,
+    coverage_fraction,
+    novelty,
+    index_of_dispersion
+)
 
-try:
-    from sklearn.metrics import (
-        # _regression:
-        mean_squared_error,
-        # _ranking:
-        roc_auc_score,
-        # _classification:
-        accuracy_score,
-        f1_score,
-        log_loss,
-    )
-except ImportError:
-    print("sklearn not available")
 
-def compute_metrics(output, k=10):
-    scores, labels = output['scores'], output['labels']
-    return {
-        'ndcg': ndcg_at_k(k, scores, labels),
-        'mrr': mrr_at_k(k, scores, labels),
-        'precision': precision_at_k(k, scores, labels),
-        'recall': recall_at_k(k, scores, labels),
-        'mean_squared_error': mean_squared_error_at_k(k, labels, scores),
-        'roc_auc': roc_auc_score_at_k(k, labels, scores),
-        'accuracy': accuracy_score_at_k(k, labels, scores),
-        'f1': f1_score_at_k(k, labels, scores),
-        'log_loss': log_loss_at_k(k, labels, scores),
-    }
+class MetricsEvaluator:
+    def __init__(self, k=10):
+        self.k = k
 
-def ndcg_at_k(k, scores, labels):
-    """
-    Compute the Normalized Discounted Cumulative Gain (NDCG) score at a rank `k`.
+    def compute_metrics(self, output, lookup_dict, lookup_key):
+        scores, labels = output['scores'], output['labels']
+        recommendations = output['recommendations']
+        candidate_items = output.get('candidate_items', [])
+        click_histories = output.get('click_histories', [])
 
-    Args:
-        y_true (np.ndarray): A 1D or 2D array of ground-truth relevance labels.
-                            Each element should be a non-negative integer. In case
-                            of a 2D array, each row represents a different sample.
-        y_pred (np.ndarray): A 1D or 2D array of predicted scores. Each element is
-                            a score corresponding to the predicted relevance. The
-                            array should have the same shape as `y_true`.
-        k (int, optional): The rank at which the NDCG score is calculated. Defaults
-                            to 10. If `k` is larger than the number of elements, it
-                            will be truncated to the number of elements.
+        top_k_recommendations = self.get_top_k_recommendations(recommendations, scores)
+        
+        metrics = {
+            'ndcg': self.ndcg_at_k(scores, labels),
+            'mrr': self.mrr_at_k(scores, labels),
+            'precision': self.precision_at_k(scores, labels),
+            'recall': self.recall_at_k(scores, labels),
+            'mean_squared_error': self.mean_squared_error_at_k(labels, scores),
+            'accuracy': self.accuracy_score_at_k(labels, scores),
+            'f1': self.f1_score_at_k(labels, scores),
+            'log_loss': self.log_loss_at_k(labels, scores),
+            'intralist_diversity': intralist_diversity(top_k_recommendations),
+            'coverage_count': coverage_count(recommendations),
+            'coverage_fraction': coverage_fraction(recommendations, candidate_items),
+            'serendipity': serendipity(recommendations, click_histories),
+            'novelty': novelty(recommendations),
+            'index_of_dispersion': index_of_dispersion(recommendations.flatten())
+        }
 
-    Returns:
-        float: The calculated NDCG score for the top `k` elements. The score ranges
-                from 0 to 1, with 1 representing the perfect ranking.
+        return metrics
 
-    Examples:
-        >>> labels = np.array([1, 0, 0, 1, 0])
-        >>> scores = np.array([0.1, 0.2, 0.1, 0.8, 0.4])
-        >>> ndcg_score(labels, scores)
-            0.5249810332008933
-    """
-    best = dcg_score_at_k(k, labels, labels)
-    actual = dcg_score_at_k(k, labels, scores)
-    return actual / best
+    def get_top_k_recommendations(self, recommendations, scores):
+        top_k_recommendations = []
+        for rec_list, score_list in zip(recommendations, scores):
+            top_k_indices = np.argsort(score_list)[::-1][:self.k]
+            top_k_recommendations.append([rec_list[i] for i in top_k_indices])
+        return np.array(top_k_recommendations)
 
-def mrr_at_k(k, scores, labels):
-    """Computes the Mean Reciprocal Rank (MRR) score at rank k.
+    def ndcg_at_k(self, scores, labels):
+        best = self.dcg_score_at_k(labels, labels)
+        actual = self.dcg_score_at_k(labels, scores)
+        return actual / best
 
-    Args:
-        k (int): The rank position up to which the MRR is computed.
-        scores (np.ndarray): A 1D array of predicted scores. These scores indicate the likelihood
-                             of items being relevant.
-        labels (np.ndarray): A 1D array of ground-truth labels. These should be binary (0 or 1),
-                             where 1 indicates the relevant item.
+    def mrr_at_k(self, scores, labels):
+        order = np.argsort(scores)[::-1]
+        labels = np.take(labels, order[:self.k])
+        rr_score = labels / (np.arange(len(labels)) + 1)
+        return np.sum(rr_score) / np.sum(labels)
 
-    Returns:
-        float: The mean reciprocal rank (MRR) score at rank k.
+    def dcg_score_at_k(self, scores, labels):
+        k = min(len(labels), self.k)
+        order = np.argsort(scores)[::-1]
+        y_true = np.take(labels, order[:k])
+        gains = 2**y_true - 1
+        discounts = np.log2(np.arange(len(y_true)) + 2)
+        return np.sum(gains / discounts)
 
-    Note:
-        Both `scores` and `labels` should be 1D arrays of the same length.
-        The function assumes higher scores in `scores` indicate higher relevance.
+    def mean_squared_error_at_k(self, y_true, y_pred):
+        order = np.argsort(y_pred)[::-1][:self.k]
+        return mean_squared_error(np.take(y_true, order), np.take(y_pred, order))
 
-    Examples:
-        >>> labels = np.array([1, 0, 0, 1, 0])
-        >>> scores = np.array([0.5, 0.2, 0.1, 0.8, 0.4])
-        >>> mrr_at_k(3, scores, labels)
-            0.5
-    """
-    order = np.argsort(scores)[::-1]
-    labels = np.take(labels, order[:k])
-    rr_score = labels / (np.arange(len(labels)) + 1)
-    return np.sum(rr_score) / np.sum(labels)
+    def accuracy_score_at_k(self, y_true, y_pred):
+        order = np.argsort(y_pred)[::-1][:self.k]
+        y_pred_at_k = np.take(y_pred, order)
+        y_true_at_k = np.take(y_true, order)
+        y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
+        return accuracy_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
 
-def dcg_score_at_k(k, scores, labels):
-    """
-    Compute the Discounted Cumulative Gain (DCG) score at a particular rank `k`.
+    def f1_score_at_k(self, y_true, y_pred):
+        order = np.argsort(y_pred)[::-1][:self.k]
+        y_pred_at_k = np.take(y_pred, order)
+        y_true_at_k = np.take(y_true, order)
+        y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
+        return f1_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
 
-    Args:
-        labels (np.ndarray): A 1D or 2D array of ground-truth relevance labels.
-                             Each element should be a non-negative integer.
-        scores (np.ndarray): A 1D or 2D array of predicted scores. Each element is
-                             a score corresponding to the predicted relevance.
-        k (int): The rank at which the DCG score is calculated. If `k` is larger
-                 than the number of elements, it will be truncated to the number
-                 of elements.
+    def log_loss_at_k(self, y_true, y_pred):
+        order = np.argsort(y_pred)[::-1][:self.k]
+        return log_loss(np.take(y_true, order), np.take(y_pred, order))
 
-    Note:
-        In case of a 2D array, each row represents a different sample.
+    def precision_at_k(self, scores, labels):
+        order = np.argsort(scores)[::-1]
+        labels = np.take(labels, order[:self.k])
+        return np.sum(labels) / self.k
 
-    Returns:
-        float or np.ndarray: The calculated DCG score for the top `k` elements.
-                             If the input is 2D, an array of DCG scores is returned.
-
-    Raises:
-        ValueError: If `labels` and `scores` have different shapes.
-
-    Examples:
-        >>> labels = np.array([1, 0, 0, 1, 0])
-        >>> scores = np.array([0.5, 0.2, 0.1, 0.8, 0.4])
-        >>> dcg_score_at_k(3, scores, labels)
-        1.63
-    """
-    k = min(len(labels), k)
-    order = np.argsort(scores)[::-1]
-    y_true = np.take(labels, order[:k])
-    gains = 2**y_true - 1
-    discounts = np.log2(np.arange(len(y_true)) + 2)
-    return np.sum(gains / discounts)
-
-def mean_squared_error_at_k(k, y_true, y_pred):
-    order = np.argsort(y_pred)[::-1][:k]
-    return mean_squared_error(np.take(y_true, order), np.take(y_pred, order))
-
-def roc_auc_score_at_k(k, y_true, y_pred):
-    order = np.argsort(y_pred)[::-1][:k]
-    return roc_auc_score(np.take(y_true, order), np.take(y_pred, order))
-
-def accuracy_score_at_k(k, y_true, y_pred):
-    order = np.argsort(y_pred)[::-1][:k]
-    y_pred_at_k = np.take(y_pred, order)
-    y_true_at_k = np.take(y_true, order)
-    y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
-    return accuracy_score(y_true_at_k, y_pred_at_k_binary)
-
-def f1_score_at_k(k, y_true, y_pred):
-    order = np.argsort(y_pred)[::-1][:k]
-    y_pred_at_k = np.take(y_pred, order)
-    y_true_at_k = np.take(y_true, order)
-    y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
-    return f1_score(y_true_at_k, y_pred_at_k_binary)
-
-def log_loss_at_k(k, y_true, y_pred):
-    order = np.argsort(y_pred)[::-1][:k]
-    return log_loss(np.take(y_true, order), np.take(y_pred, order))
-
-def precision_at_k(k, scores, labels):
-    order = np.argsort(scores)[::-1]
-    labels = np.take(labels, order[:k])
-    return np.sum(labels) / k
-
-def recall_at_k(k, scores, labels):
-    order = np.argsort(scores)[::-1]
-    labels = np.take(labels, order[:k])
-    return np.sum(labels) / np.sum(labels[:k])
+    def recall_at_k(self, scores, labels):
+        order = np.argsort(scores)[::-1]
+        labels = np.take(labels, order[:self.k])
+        return np.sum(labels) / np.sum(labels[:self.k])

@@ -1,8 +1,6 @@
 import argparse
 import json
 from models import get_model
-from metrics import compute_metrics
-from dataloader import get_loader
 import torch
 from collections import defaultdict
 from datetime import datetime
@@ -10,17 +8,31 @@ import os
 from utils import compute_rank_loss
 from torch.nn import CrossEntropyLoss
 from tqdm import tqdm
+from transformers import AutoTokenizer
+from dataloader import get_loader
+import wandb
+from metrics import MetricsEvaluator
 
 
-def evaluate(args, model, tokenizer, data_loader):
+def evaluate(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     results = defaultdict(int)
+    model = get_model(args).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
+    data_loader = get_loader(args, 'test', tokenizer)
 
     ce = CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    metrics_evaluator = MetricsEvaluator().compute_metrics
 
     model.to(device)
     model.eval()
     total = 0
+
+    all_scores = []
+    all_labels = []
+    all_recommendations = []
+    all_candidate_items = []  
+    all_click_histories = []
 
     for batch in tqdm(data_loader):
         # Forward pass for the positive and negative examples
@@ -73,33 +85,73 @@ def evaluate(args, model, tokenizer, data_loader):
         results["loss"] += loss.item()
         results["accuracy"] += accuracy.item() 
         total += batch["pos_input_ids"].size(0)
-    
+
+        # Collect data for metric evaluation
+        scores = pos_prob_yes.cpu().numpy().tolist()
+        labels = pos_target.cpu().numpy().tolist()
+        recommendations = batch["recommendations"].cpu().numpy().tolist()
+        candidate_items = batch.get("candidate_items", []).cpu().numpy().tolist()  # Optional
+        click_histories = batch.get("click_histories", []).cpu().numpy().tolist()  # Optional
+
+        all_scores.extend(scores)
+        all_labels.extend(labels)
+        all_recommendations.extend(recommendations)
+        all_candidate_items.extend(candidate_items)  
+        all_click_histories.extend(click_histories)  
+
+    # Compute metrics
+    output = {
+        'scores': all_scores,
+        'labels': all_labels,
+        'recommendations': all_recommendations,
+        'candidate_items': all_candidate_items,  # Optional
+        'click_histories': all_click_histories  # Optional
+    }
+
+    metrics = metrics_evaluator.compute_metrics(output, lookup_dict=None, lookup_key=None)
+
     for key in results:
         results[key] /= total
+
+    # If using wandb, log the metrics
+    if args.use_wandb:
+        wandb.log(metrics)
     
     return results
 
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backbone', type=str, default='t5-small', help='backbone model')
-    parser.add_argument('--tokenizer', type=str, default='t5-small', help='tokenizer model')
-    parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
+    parser.add_argument('--backbone', type=str, default='google/mt5-small', help='backbone model')
+    parser.add_argument('--tokenizer', type=str, default='google/mt5-small', help='tokenizer model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
-    parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
+    parser.add_argument('--current_step', type=int, default=0, help='starting step for cosine learning rate')
+    parser.add_argument('--n_epochs', type=int, default=10, help='number of epochs')
+    parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
+    parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
+    parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
+    parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
+    parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
+    parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
+    parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
+    parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
+    parser.add_argument('--datafraction', type=float, default=1.0, help='fraction of data to use')
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
     args = argparser()
-    print(args)
 
-    model = get_model(args)
-    results = evaluate(model, 'test')
+    if args.use_wandb:
+        os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
+        wandb.init(
+            project=f"{args.backbone.split('/')[1]}_{args.dataset}_{args.lr}_{args.n_epochs}",
+            group=f"{args.backbone}",
+            entity="RecSysPGNR",
+        )
 
-    time = datetime.now().strftime('%b%d_%H-%M')
-    os.makedirs(f'/results/{time}', exist_ok=True)
-    with open(f'/results/{time}/{args.model}_{args.labda}.json', 'w') as f:
-        json.dump(results, f)
+    results = evaluate(args)

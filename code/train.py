@@ -39,6 +39,9 @@ def train(args):
         wandb.log({
             "T": args.T,
             "lambda": args.labda,
+            "classifier": float(int(args.use_classifier==True)),
+            "QA": float(int(args.use_QA_model==True)),
+            "titles": float(int(args.titles==True)),
         })
 
     # TODO fix the hardcoding here
@@ -60,7 +63,7 @@ def train(args):
         for batch in tqdm(data_loader_train):
             
             if n_steps % 1000 == 0:
-                torch.save(model.state_dict(), "model.pth")
+                torch.save(model.state_dict(), f"model_lr_{args.lr}_class_{args.use_classifier}_lab_{args.labda}__qa_{args.use_QA_model}_tit_{args.titles}.pth")
             n_steps += 1
 
             # Forward pass for the positive and negative examples
@@ -83,12 +86,13 @@ def train(args):
                 batch_size = pos_probs.shape[0]
                 pos_target = torch.tensor(batch_size * [0]).to(device) # 0 = idx of 'ja' token in decoder input sequence 
                 neg_target = torch.tensor(batch_size * [3]).to(device) # 3 = idx of 'nej' token in decoder input sequence
+                # print(pos_logits, pos_target)
                 loss_nll = ce(pos_logits, pos_target) + ce(neg_logits, neg_target)
                 pos_prob_yes = pos_probs[:,0] #B,T -> B
                 neg_prob_yes = neg_probs[:,0] #B,T -> B
                 loss_bpr = compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
                 loss = (1-args.labda)*loss_nll + args.labda*loss_bpr
-                print(loss)
+                # print(loss_nll, loss_bpr)
             else:
                 # Only take the first token (should be 'ja' or 'nej')
                 pos_logits = pos_outputs.logits[:,0,:]  # B, T, V -> B, V
@@ -98,10 +102,11 @@ def train(args):
                     pos_classifier_logits = classifier(pos_logits)
                     neg_classifier_logits = classifier(neg_logits)
 
-                    wandb.log({
-                        "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
-                        "neg_classifier_logits": neg_classifier_logits.mean(0)[0]
-                    })
+                    if args.use_wandb and args.debug:
+                        wandb.log({
+                            "pos_classifier_logits": pos_classifier_logits.mean(0)[0],
+                            "neg_classifier_logits": neg_classifier_logits.mean(0)[0]
+                        })
 
                     pos_labels = torch.ones(pos_classifier_logits.size(0), dtype=torch.long, device=device)  # All positive samples are labeled 1
                     neg_labels = torch.zeros(neg_classifier_logits.size(0), dtype=torch.long, device=device)  # All negative samples are labeled 0
@@ -180,7 +185,6 @@ def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backbone', type=str, default='google/mt5-small', help='backbone model')
     parser.add_argument('--tokenizer', type=str, default='google/mt5-small', help='tokenizer model')
-    parser.add_argument('--checkpoint', type=str, default="", help='checkpoint to pretrained model')
     parser.add_argument('--labda', type=float, default=0.5, help='lambda for pairwise ranking loss')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--current_step', type=int, default=0, help='starting step for cosine learning rate')
@@ -189,6 +193,7 @@ def argparser():
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--titles', action='store_true', help='use titles instead of subtitles in prompt')
     parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
     parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
@@ -207,7 +212,7 @@ if __name__ == '__main__':
     if args.use_wandb:
         os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
         wandb.init(
-            project=f"{args.backbone.split('/')[1]}_{args.dataset}_{args.lr}_{args.n_epochs}",
+            project=f"{args.backbone.split('/')[1]}_{args.dataset}_n_epochs_{args.n_epochs}_lr_{args.lr}_class_{args.use_classifier}_lab_{args.labda}__qa_{args.use_QA_model}_tit_{args.titles}",
             group=f"{args.backbone}",
             entity="RecSysPGNR",
         )
