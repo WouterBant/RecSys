@@ -2,7 +2,7 @@ from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import random
-from prompt_templates import create_prompt
+from prompt_templates import create_prompt_titles, create_prompt_subtitles
 
 
 class EkstraBladetDataset(Dataset):
@@ -146,6 +146,11 @@ class CollatorTest:
 def get_loader(args, split, tokenizer, debug=False):
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
+    if args.titles:
+        create_prompt = create_prompt_titles
+    else:
+        print("hi")
+        create_prompt = create_prompt_subtitles
     if split == "test":
         collator = CollatorTest(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
