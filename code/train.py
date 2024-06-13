@@ -62,7 +62,7 @@ def train(args):
 
         for batch in tqdm(data_loader_train):
             
-            if n_steps % 1 == 0:
+            if n_steps % 1000 == 0:
                 torch.save(model.state_dict(), f"model_lr_{args.lr}_class_{args.use_classifier}_lab_{args.labda}__qa_{args.use_QA_model}_tit_{args.titles}.pth")
             n_steps += 1
 
