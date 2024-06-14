@@ -108,7 +108,7 @@ def evaluate(args):
         'click_histories': all_click_histories  # Optional
     }
 
-    metrics = metrics_evaluator.compute_metrics(output, lookup_dict=None, lookup_key=None)
+    metrics = metrics_evaluator(output, lookup_dict=None, lookup_key=None)
 
     for key in results:
         results[key] /= total
