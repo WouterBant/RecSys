@@ -1,25 +1,54 @@
-## PGNR
-Source code for the paper 'The Prompt-based Generative News Recommender System' 
+# Ranking Danish news articles with multilingual T5
 
+## Getting started
 
-## TODO
-modellen vanuit checkpoint laden overal waar we nu een model laden als optie
+### Clone code to your device
 
-## List of special tokens
+```bash
+git clone https://github.com/WouterBant/RecSys.git
+```
 
-- -100: padding token
-- 150: ?
-- 4273: ?
+```bash
+cd RecSys
+```
+
+### Environment
+
+```bash
+conda env create -f environment.yml
+```
+
+```bash
+conda activate RecSys
+```
+
+### Running experiments
+
+> Note that the relevant data will be downloaded automatically without asking for permission when running the following commands. Also, our code uses GPUs when available by default but also works on CPUs.
+
+First change directory to the folder containing all the code:
+
+```bash
+cd code
+```
+
+For overfitting on a small dataset:
+
+```bash
+python train.py --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 10000 --dataset demo --datafraction 0.001 --n_epochs 10000
+```
+
+```bash
+python train.py
+```
+
+```bash
+python evaluate.py
+```
 
 ## Acknowledgement 
-The overall structure of the code is derived from the open-source P5 project (https://github.com/jeykigung/P5). We appreciate their significant contribution to the research community.
+The approach largely follows the paper [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862). However, we chose to write the code from scratch as we found this easier as opposed to getting the provided code to work. Thus our implementation will likely differ from this paper but the idea stays the same.
 
 
+## Start of predictions file where 0's start (delete later)
 0 [127,156,17,241
-
-
-#quick run for overfit:
-python train.py --use_wandb --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 2 --dataset demo --datafraction 0.001 --n_epochs 10000 --use_QA_model
-
-
-torch.tensor([[-0.9477, -3.7398, -1.0754, -0.7692, -4.1885],        [-1.1750, -0.6564, -1.8939, -1.5410, -1.9851],        [-2.4754, -2.3068, -1.5064, -1.7220, -0.7567],        [-0.8613, -0.7153, -2.3804,  0.0215, -9.8556],        [-1.0081, -0.9542, -1.9504, -1.5692, -1.8795],[-2.6071, -3.2940, -2.0377, -2.3994, -2.0357],[-1.1059, -1.5805, -1.7454, -1.8936, -1.5744],[-2.1765, -2.8839, -1.4926, -4.0404, -3.1123]])
