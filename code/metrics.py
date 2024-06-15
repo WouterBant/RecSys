@@ -22,6 +22,9 @@ class MetricsEvaluator:
     def compute_metrics(self, output):
         scores = output['scores']
         labels = output['labels']
+
+        assert scores.shape == labels.shape, f"{scores.shape} {labels.shape}"
+
         # recommendations = output['recommendations']
         # candidate_items = output.get('candidate_items', [])
         # click_histories = output.get('click_histories', [])
@@ -37,6 +40,7 @@ class MetricsEvaluator:
             f'mean_squared_error@{self.k}': self.mean_squared_error_at_k(labels, scores),
             f'accuracy@{self.k}': self.accuracy_score_at_k(labels, scores),
             f'f1@{self.k}': self.f1_score_at_k(labels, scores),
+            f'hit_ratio@{self.k}': self.hit_ratio_at_k(scores, labels),
             # 'log_loss': self.log_loss_at_k(labels, scores),
             # 'intralist_diversity': intralist_diversity(top_k_recommendations),
             # 'coverage_count': coverage_count(recommendations),
@@ -55,18 +59,9 @@ class MetricsEvaluator:
 
     def ndcg_at_k(self, scores, labels):
         best = self.dcg_score_at_k(labels, labels)
-        actual = self.dcg_score_at_k(labels, scores)
+        actual = self.dcg_score_at_k(scores, labels)
+        assert actual <= best, f"{actual} > {best}"
         return actual / best
-
-    def mrr_at_k(self, scores, labels, k):
-        order = np.argsort(scores)[::-1]
-        k = min(k, len(order))
-        labels = np.take(labels, order[:k])
-        denom = np.sum(labels)
-        if denom == 0:
-            return 0.0
-        rr_score = labels / (np.arange(len(labels)) + 1)
-        return np.sum(rr_score) / denom
 
     def dcg_score_at_k(self, scores, labels):
         k = min(len(labels), self.k)
@@ -75,6 +70,17 @@ class MetricsEvaluator:
         gains = 2**y_true - 1
         discounts = np.log2(np.arange(len(y_true)) + 2)
         return np.sum(gains / discounts)
+
+    def mrr_at_k(self, scores, labels, k):
+        order = np.argsort(scores)[::-1]
+        k = min(k, len(order))
+        labels = np.take(labels, order[:k])
+        rr_score = 0.0
+        for i in range(k):
+            if labels[i] == 1:
+                rr_score = 1.0 / (i + 1)
+                break
+        return rr_score
 
     def mean_squared_error_at_k(self, y_true, y_pred):
         order = np.argsort(y_pred)[::-1][:self.k]
@@ -88,9 +94,6 @@ class MetricsEvaluator:
         return accuracy_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
 
     def f1_score_at_k(self, y_true, y_pred):
-        print(y_true)
-        print(y_true.shape, y_pred.shape)
-        print(y_pred)
         order = np.argsort(y_pred)[::-1][:self.k]
         y_pred_at_k = np.take(y_pred, order)
         y_true_at_k = np.take(y_true, order)
@@ -107,9 +110,11 @@ class MetricsEvaluator:
         return np.sum(labels) / k
 
     def recall_at_k(self, scores, labels):
-        order = np.argsort(scores)[::-1]
-        labels = np.take(labels, order[:self.k])
-        denom = np.sum(labels[:self.k])
-        if denom == 0:
-            return 0
-        return np.sum(labels) / denom
+        order = np.argsort(scores)[::-1][:self.k]
+        labels_at_k = np.take(labels, order)
+        return np.sum(labels_at_k) / np.sum(labels) if np.sum(labels) != 0 else 0
+
+    def hit_ratio_at_k(self, scores, labels):
+        order = np.argsort(scores)[::-1][:self.k]
+        labels_at_k = np.take(labels, order)
+        return np.any(labels_at_k)

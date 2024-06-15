@@ -25,8 +25,11 @@ def evaluate(args, model, data_loader):
         probs = model.validation_step(batch)
 
         # Collect data for metric evaluation
-        scores = probs.cpu().numpy()
-        labels = np.array(batch["targets"])
+        scores = probs.squeeze().cpu().numpy()
+        if args.model == "QA+":
+            labels = np.array(torch.nn.functional.one_hot(batch["pos"], num_classes=len(scores)).squeeze())
+        else:
+            labels = np.array(batch["targets"])
         # recommendations = batch["recommendations"].cpu().numpy().tolist()
         # candidate_items = batch.get("candidate_items", []).cpu().numpy().tolist()  # Optional
         # click_histories = batch.get("click_histories", []).cpu().numpy().tolist()  # Optional

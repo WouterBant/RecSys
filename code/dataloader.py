@@ -8,8 +8,11 @@ import torch
 class EkstraBladetDataset(Dataset):
 
     def __init__(self, args, create_prompt, split="train", debug=False):
+        self.split = split
         
         # Download the dataset from huggingface
+        if split == "hoe":
+            split = "train"
         if split == "test":
             self.behaviors = load_dataset(f'Wouter01/testbehaviors', cache_dir=f"../../testbehaviors_data")["train"]
             self.articles = load_dataset(f'Wouter01/testarticles', cache_dir=f"../../testarticles_data")["train"].to_pandas()
@@ -27,7 +30,6 @@ class EkstraBladetDataset(Dataset):
         self.create_prompt = create_prompt  # Function to create a prompt from the data
         self.debug = debug
         self.datafraction = args.datafraction
-        self.split = split
         self.args = args
 
     def __len__(self):
@@ -63,18 +65,18 @@ class EkstraBladetDataset(Dataset):
                 article = self.articles.loc[article_id]
                 titles_inview.append(article["title"])
             
-            target = -1
+            target_idx = -1
             for idx, i in enumerate(inview_articles):
                 if i in behavior["article_ids_clicked"]:
-                    target = idx
-            assert target != -1
+                    target_idx = idx
+                    break
+            assert target_idx != -1
 
             prompt = self.create_prompt(titles_clicked)
-            target_idx = target
-            target = "@ " + "@ ".join(titles_inview)
+            target = "> @ " + " > @ ".join(titles_inview)
             return prompt, target_idx, target
 
-        if self.split == "validation":
+        if self.split == "validation" or self.split ==  "hoe":
             # Get the past article information
             titles, subtitles, categories = [], [], []
             for article_id in old_clicks.tolist():
@@ -219,13 +221,27 @@ class CollatorQAfast:
             decoder_start = self.tokenizer([t for _, _, t in batch], return_tensors="pt", padding=True, truncation=True)
 
         targets = torch.tensor([t for _, t, _ in batch])
-        print(targets)
-        print(targets.shape)
-        
+
+        # Create a tensor to hold the positions with the same shape as targets
+        positions_tensor = torch.full(targets.shape, -1, dtype=torch.long)
+
+        # Iterate over each row to find positions of 1250
+        for i in range(targets.size(0)):
+            row = decoder_start["input_ids"][i]
+            target_row = targets[i]
+            
+            for idx, j in enumerate(row):
+                if j == 1250:
+                    target_row -= 1
+                    if target_row == -1:
+                        positions_tensor[i] = idx
+                        break
+            
         return {
             "pos_input_ids": inputs["input_ids"],
             "pos_attention_mask": inputs["attention_mask"],
             "targets": targets,
+            "pos": positions_tensor,
             "decoder_start": decoder_start["input_ids"],
         }
 
@@ -235,10 +251,10 @@ def get_loader(args, split, tokenizer, debug=False):
     if args.model == "QA+":
         create_prompt = create_prompt_qa_fast
         collator = CollatorQAfast(tokenizer)
-        data = EkstraBladetDataset(args, create_prompt, split=split)
+        data = EkstraBladetDataset(args, create_prompt, split="train")  # todo change this to split
         shuffle = (split == "train")
         bs = args.batch_size if split == "train" else 1
-        return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=shuffle)
+        return DataLoader(data, batch_size=bs, collate_fn=collator, num_workers=args.num_workers, shuffle=shuffle)
 
     if args.titles:
         create_prompt = create_prompt_titles
@@ -247,12 +263,13 @@ def get_loader(args, split, tokenizer, debug=False):
         create_prompt = create_prompt_subtitles
 
     if split == "train":
+        print("hallo")
         collator = CollatorTrain(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
         return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
     if split == "validation":
         collator = CollatorValidation(tokenizer)
-        data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
+        data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)  # TODO je kan deze naar hoe aanpassen om te testen op train set
         return DataLoader(data, batch_size=1, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
     if split == "test":
         collator = CollatorTest(tokenizer)
