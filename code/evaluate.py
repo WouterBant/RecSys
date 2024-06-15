@@ -1,5 +1,5 @@
 import argparse
-from models import get_model
+from models.get_model import get_model
 import torch
 from collections import defaultdict
 import os
@@ -22,35 +22,11 @@ def evaluate(args, model, data_loader):
     total = 0
 
     for batch in tqdm(data_loader):
-        input_ids = batch["prompt_input_ids"].to(device)
-        attention_mask = batch["prompt_attention_mask"].to(device)
-        decoder_input_ids = batch["decoder_start"].to(device)
-        target = batch["targets"]
+        probs = model.validation_step(batch)
 
-        # Forward pass for the positive and negative examples
-        with torch.no_grad():
-            outputs = model(
-                input_ids=input_ids, 
-                attention_mask=attention_mask,
-                decoder_input_ids=decoder_input_ids
-            )
-
-        if args.use_QA_model:
-            # Only consider the start logits
-            logits = outputs.start_logits
-
-            # Only consider the probability for 'ja'
-            probs = torch.softmax(logits, dim=-1)[:0]
-        else:
-            # Only take the first token (should be 'ja' or 'nej')
-            logits = outputs.logits[:,0,:]  # B, T, V -> B, V
-
-            # 36339 is the token id for 'ja'
-            probs = torch.softmax(logits, dim=-1)[:, 432]  # B, V -> B
-        
         # Collect data for metric evaluation
         scores = probs.cpu().numpy()
-        labels = np.array(target)
+        labels = np.array(batch["targets"])
         # recommendations = batch["recommendations"].cpu().numpy().tolist()
         # candidate_items = batch.get("candidate_items", []).cpu().numpy().tolist()  # Optional
         # click_histories = batch.get("click_histories", []).cpu().numpy().tolist()  # Optional

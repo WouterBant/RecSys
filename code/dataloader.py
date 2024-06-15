@@ -191,6 +191,11 @@ def get_loader(args, split, tokenizer, debug=False):
     else:
         print("hi")
         create_prompt = create_prompt_subtitles
+
+    if split == "train":
+        collator = CollatorTrain(tokenizer)
+        data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
+        return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
     if split == "validation":
         collator = CollatorValidation(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
@@ -200,11 +205,7 @@ def get_loader(args, split, tokenizer, debug=False):
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
         return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
     
-    collator = CollatorTrain(tokenizer)
-    data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
-    return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
-
-
+    
 if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("google/mt5-base")
     collator = CollatorTrain(tokenizer)
