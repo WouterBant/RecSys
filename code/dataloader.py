@@ -2,8 +2,8 @@ from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from transformers import AutoTokenizer
 import random
-from prompt_templates import create_prompt_titles, create_prompt_subtitles
-
+from prompt_templates import create_prompt_titles, create_prompt_subtitles, create_prompt_qa_fast
+import torch
 
 class EkstraBladetDataset(Dataset):
 
@@ -28,6 +28,7 @@ class EkstraBladetDataset(Dataset):
         self.debug = debug
         self.datafraction = args.datafraction
         self.split = split
+        self.args = args
 
     def __len__(self):
         return int(self.datafraction*len(self.behaviors))
@@ -49,6 +50,29 @@ class EkstraBladetDataset(Dataset):
         # Get the T latest clicked articles by the user
         old_clicks = history["article_id_fixed"]
         old_clicks = old_clicks[-min(len(old_clicks), self.T):]
+
+        if self.args.model == "QA+":
+            titles_clicked = []
+            for article_id in old_clicks.tolist():
+                article = self.articles.loc[article_id]
+                titles_clicked.append(article["title"])
+
+            random.shuffle(inview_articles)
+            titles_inview = []
+            for article_id in inview_articles:
+                article = self.articles.loc[article_id]
+                titles_inview.append(article["title"])
+            
+            target = -1
+            for idx, i in enumerate(inview_articles):
+                if i in behavior["article_ids_clicked"]:
+                    target = idx
+            assert target != -1
+
+            prompt = self.create_prompt(titles_clicked)
+            target_idx = target
+            target = "@ " + "@ ".join(titles_inview)
+            return prompt, target_idx, target
 
         if self.split == "validation":
             # Get the past article information
@@ -183,8 +207,38 @@ class CollatorTest:
             "impression_ids": impression_ids
         }
 
+class CollatorQAfast:
+
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, batch):
+        inputs = self.tokenizer([p for p, _, _ in batch], return_tensors='pt', padding=True, truncation=True)
+        
+        with self.tokenizer.as_target_tokenizer():
+            decoder_start = self.tokenizer([t for _, _, t in batch], return_tensors="pt", padding=True, truncation=True)
+
+        targets = torch.tensor([t for _, t, _ in batch])
+        print(targets)
+        print(targets.shape)
+        
+        return {
+            "pos_input_ids": inputs["input_ids"],
+            "pos_attention_mask": inputs["attention_mask"],
+            "targets": targets,
+            "decoder_start": decoder_start["input_ids"],
+        }
+
 def get_loader(args, split, tokenizer, debug=False):
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
+
+    if args.model == "QA+":
+        create_prompt = create_prompt_qa_fast
+        collator = CollatorQAfast(tokenizer)
+        data = EkstraBladetDataset(args, create_prompt, split=split)
+        shuffle = (split == "train")
+        bs = args.batch_size if split == "train" else 1
+        return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=shuffle)
 
     if args.titles:
         create_prompt = create_prompt_titles

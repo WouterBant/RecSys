@@ -17,6 +17,7 @@ def get_model(args):
                 model = QA_fast_model(args)
             else:
                 raise ValueError(f"Model {args.model} not recognized")
+            break
         except:
             pass
     

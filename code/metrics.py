@@ -32,7 +32,7 @@ class MetricsEvaluator:
             f'ndcg@{self.k}': self.ndcg_at_k(scores, labels),
             f'mrr': self.mrr_at_k(scores, labels, 10**6),
             f'mrr@{self.k}': self.mrr_at_k(scores, labels, self.k),
-            f'precision@{self.k}': self.precision_at_k(scores, labels),
+            f'precision@1': self.precision_at_k(scores, labels, 1),
             f'recall@{self.k}': self.recall_at_k(scores, labels),
             f'mean_squared_error@{self.k}': self.mean_squared_error_at_k(labels, scores),
             f'accuracy@{self.k}': self.accuracy_score_at_k(labels, scores),
@@ -88,6 +88,9 @@ class MetricsEvaluator:
         return accuracy_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
 
     def f1_score_at_k(self, y_true, y_pred):
+        print(y_true)
+        print(y_true.shape, y_pred.shape)
+        print(y_pred)
         order = np.argsort(y_pred)[::-1][:self.k]
         y_pred_at_k = np.take(y_pred, order)
         y_true_at_k = np.take(y_true, order)
@@ -98,10 +101,10 @@ class MetricsEvaluator:
         order = np.argsort(y_pred)[::-1][:self.k]
         return log_loss(np.take(y_true, order), np.take(y_pred, order))
 
-    def precision_at_k(self, scores, labels):
+    def precision_at_k(self, scores, labels, k=1):
         order = np.argsort(scores)[::-1]
-        labels = np.take(labels, order[:self.k])
-        return np.sum(labels) / self.k
+        labels = np.take(labels, order[:k])
+        return np.sum(labels) / k
 
     def recall_at_k(self, scores, labels):
         order = np.argsort(scores)[::-1]

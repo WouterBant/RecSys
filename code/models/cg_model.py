@@ -29,6 +29,8 @@ class CG_model(BaseModel):
         pos_target = batch["pos_labels"][:,0].to(self.device)  # B, T -> B
         neg_target = batch["neg_labels"][:,0].to(self.device)
 
+        print(pos_logits.shape)  # 8 v
+        print(pos_target.shape, "t")  # 8
         # Compute loss
         loss_nll = self.ce(pos_logits, pos_target) + self.ce(neg_logits, neg_target)
         loss_bpr = self.compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
@@ -44,5 +46,4 @@ class CG_model(BaseModel):
 
         # 36339 is the token id for 'ja'
         probs = torch.softmax(logits, dim=-1)[:, 432]  # B, V -> B
-
         return probs

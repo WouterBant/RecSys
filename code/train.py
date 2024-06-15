@@ -25,7 +25,6 @@ def train(args):
         wandb.log({
             "T": args.T,
             "lambda": args.labda,
-            "model": args.model,
             "titles": float(int(args.titles==True)),
         })
 
@@ -69,15 +68,12 @@ def train(args):
                     'avg_neg_prob_yes': neg_prob_yes.mean(),
                 })
 
-        if args.use_wandb:
+        if args.use_wandb and not args.debug:
             wandb.log({'epoch_loss': total_loss / len(data_loader_train)})
         
         # validation
         if (epoch + 1) % args.eval_interval == 0:
             results = evaluate(args, model, data_loader_val)
-
-            if args.use_wandb:
-                wandb.log(results)
 
             # TODO fix this, just ndcg or someting
             if results['accuracy'] > best_metric:

@@ -13,3 +13,11 @@ def create_prompt_titles(titles, subtitles, title, subtitle):
         prompt += f"{t}, "
     prompt += f"vil brugeren læse artiklen {title}? (ja/nej)\n"
     return prompt
+
+def create_prompt_qa_fast(titles):
+    prompt = f"En bruger har for nylig læst artikler: "
+    for t in titles:
+        t = t[:min(len(t), 60)]  # clip long titles
+        prompt += f"{t}, "
+    prompt += f"hvilken af følgende artikler er brugeren mest tilbøjelig til at klikke på?\n"
+    return prompt

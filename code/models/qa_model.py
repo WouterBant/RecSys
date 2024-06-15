@@ -44,7 +44,7 @@ class QA_model(BaseModel):
         logits = outputs.start_logits
 
         # Only consider the probability for 'ja'
-        probs = torch.softmax(logits, dim=-1)[:0]
+        probs = torch.softmax(logits, dim=-1)[:, 0]
 
         return probs
 

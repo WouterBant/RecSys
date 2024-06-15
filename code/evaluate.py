@@ -39,16 +39,16 @@ def evaluate(args, model, data_loader):
             # 'click_histories': click_histories
         })
 
-        # If using wandb, log the metrics
-        if args.use_wandb:
-            wandb.log(metrics)
-
         for key in metrics:
             results[key] += metrics[key]*len(scores)
         total += len(scores)
     
     for key in results:
         results[key] /= total
+    
+    # If using wandb, log the metrics
+    if args.use_wandb:
+        wandb.log(results)
   
     return results
 

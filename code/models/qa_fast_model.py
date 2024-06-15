@@ -25,14 +25,25 @@ class QA_fast_model(BaseModel):
         )
         logits = outputs.start_logits
         probs = torch.softmax(logits, dim=-1)
+        print("logits", logits.shape)
+        print("target", batch["targets"].shape)
         loss_nll = self.ce(logits, batch["targets"].to(self.device))
-        correct_prob_mean = probs[torch.arange(logits.size(0)),batch["targets"]].mean(dim=0).item()
+        correct_prob_mean = torch.gather(probs, 1, batch["targets"].unsqueeze(1).to(self.device)).squeeze().mean().item()
     
-        return loss_nll, correct_prob_mean, torch.zeros_like(correct_prob_mean)
+        return loss_nll, correct_prob_mean, 0
     
     def validation_step(self, batch):
-        outputs = self.validation_step_forward(batch)
+        # Forward all examples simultaneously
+        with torch.no_grad():
+            outputs = self.model(
+                input_ids=batch["pos_input_ids"].to(self.device), 
+                attention_mask=batch["pos_attention_mask"].to(self.device),
+                decoder_input_ids=batch["decoder_start"].to(self.device)
+            )
         logits = outputs.start_logits
+        print(logits.shape)
+        logits = logits[batch["decoder_start"] == 1250]  # only consider logits of special tokens (@)
         probs = torch.softmax(logits, dim=-1)
+        print(probs.shape)
         # TODO return the right probabilities and not all of them
         return probs
