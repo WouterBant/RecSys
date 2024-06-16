@@ -27,7 +27,7 @@ def evaluate(args, model, data_loader):
         # Collect data for metric evaluation
         scores = probs.squeeze().cpu().numpy()
         if args.model == "QA+":
-            labels = np.array(torch.nn.functional.one_hot(batch["pos"], num_classes=len(scores)).squeeze())
+            labels = np.array(batch["targets_one_hot"])
         else:
             labels = np.array(batch["targets"])
         # recommendations = batch["recommendations"].cpu().numpy().tolist()

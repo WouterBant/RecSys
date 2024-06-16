@@ -33,7 +33,7 @@ def train(args):
 
     best_metric, best_model = 0, None
     scaler = GradScaler()
-
+    best_mrr = 0
     n_steps = 0
     for epoch in tqdm(range(args.n_epochs)):
         model.train()
@@ -41,9 +41,14 @@ def train(args):
 
         for batch in tqdm(data_loader_train):
             
-            # Checkpointing every 1000 steps
-            if n_steps % 1000 == 0:
+            # Checkpointing every 5000 steps
+            if n_steps % 2000 == 0:
                 torch.save(model.state_dict(), f"checkpoints/model_lr_{args.lr}_lab_{args.labda}_model_{args.model}_tit_{args.titles}.pth")
+                results = evaluate(args, model, data_loader_val)
+                if results["mrr"] > best_mrr:
+                    best_mrr = results["mrr"]
+                    torch.save(model.state_dict(), f"checkpoints/bestmodel_lr_{args.lr}_lab_{args.labda}_model_{args.model}_tit_{args.titles}.pth")
+
             n_steps += 1
 
             # Forward pass
