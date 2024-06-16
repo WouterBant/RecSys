@@ -52,6 +52,7 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
                                 # Write previous impression's predictions
                                 sorted_idxs = np.argsort(np.array(impression_probs)) + 1
                                 f.write(f"{previous_impression_id} [{','.join(map(str, sorted_idxs.tolist()))}]\n")
+                                f.flush()
 
                             # Reset impression_logits and previous_impression_id
                             impression_probs = []
