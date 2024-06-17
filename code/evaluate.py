@@ -76,6 +76,7 @@ def argparser():
     parser.add_argument('--datafraction', type=float, default=1.0, help='fraction of data to use')
     parser.add_argument('--warmup_steps', type=int, default=15000, help='number of warmup steps')
     parser.add_argument('--model', type=str, choices=["QA", "QA+", "CG"], help='model to train')
+    parser.add_argument('--prompt', type=str, choices=["titles", "subtitles", "QA+", "diversity", "pubtime"], help='model to train')
     args = parser.parse_args()
     return args
 
