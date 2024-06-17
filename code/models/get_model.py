@@ -10,18 +10,27 @@ def get_model(args):
     for _ in range(10):
         try:
             if args.model == "CG":
-                model = CG_model(args)
+                if args.old and len(args.from_checkpoint) > 4:
+                    model = CG_model.from_pretrained(args)
+                else:
+                    model = CG_model(args)
             elif args.model == "QA":
-                model = QA_model(args)
+                if args.old and len(args.from_checkpoint) > 4:
+                    model = QA_model.from_pretrained(args)
+                else:
+                    model = QA_model(args)
             elif args.model == "QA+":
-                model = QA_fast_model(args)
+                if args.old and len(args.from_checkpoint) > 4:
+                    model = QA_fast_model.from_pretrained(args)
+                else:
+                    model = QA_fast_model(args)
             else:
                 raise ValueError(f"Model {args.model} not recognized")
             break
-        except:
-            pass
+        except Exception as e:
+            print(e)
     
-    if len(args.from_checkpoint) > 4:
+    if not args.old and len(args.from_checkpoint) > 4:
         model.load_state_dict(torch.load(args.from_checkpoint))
 
     return model

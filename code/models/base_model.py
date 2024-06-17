@@ -10,6 +10,13 @@ class BaseModel(nn.Module):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = None
 
+    @classmethod
+    def from_pretrained(cls, args):
+        model = cls(args)
+        state_dict = torch.load(args.from_checkpoint, map_location=model.device)
+        print(model.model.load_state_dict(state_dict), "\n\n\n\n\n\n")
+        return model
+
     def train_step(self, batch):
         raise NotImplementedError
 

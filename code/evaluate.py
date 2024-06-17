@@ -9,6 +9,7 @@ import wandb
 from metrics import MetricsEvaluator
 from transformers import AutoTokenizer
 import numpy as np
+import json
 
 
 def evaluate(args, model, data_loader):
@@ -68,14 +69,16 @@ def argparser():
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--old', action='store_true', help='old way of loading from pretrained model')
     parser.add_argument('--titles', action='store_true', help='use titles instead of subtitles in prompt')
-    parser.add_argument('--use_classifier', action='store_true', help='use classifier on top of positive logits')
-    parser.add_argument('--use_QA_model', action='store_true', help='use QA model instead of generative model')
     parser.add_argument('--T', type=int, default=4, help='number of previous clicked articles to include in the prompt')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
     parser.add_argument('--eval_interval', type=int, default=1, help='evaluate model every n epochs')
     parser.add_argument('--from_checkpoint', type=str, default='', help='load model from checkpoint')
+    parser.add_argument('--evaltrain', action='store_true', help='for evaluating on training set')
     parser.add_argument('--datafraction', type=float, default=1.0, help='fraction of data to use')
+    parser.add_argument('--warmup_steps', type=int, default=15000, help='number of warmup steps')
+    parser.add_argument('--model', type=str, choices=["QA", "QA+", "CG"], help='model to train')
     args = parser.parse_args()
     return args
 
@@ -83,10 +86,12 @@ def argparser():
 if __name__ == '__main__':
     args = argparser()
 
+    name = "train" if args.evaltrain else "validation"
+
     if args.use_wandb:
         os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
         wandb.init(
-            project=f"eval_{args.backbone.split('/')[1]}_{args.dataset}_{args.lr}_{args.n_epochs}",
+            project=f"eval_{name}_{args.from_checkpoint.split('/')[-1]}",
             group=f"{args.backbone}",
             entity="RecSysPGNR",
         )
@@ -95,3 +100,6 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     data_loader_val = get_loader(args, 'validation', tokenizer)
     results = evaluate(args, model, data_loader_val)
+
+    with open(f"results/{name}/{args.from_checkpoint.split('/')[-1][:-4]}.json", 'w') as file:
+        json.dump(results, file)
