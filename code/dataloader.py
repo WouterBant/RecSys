@@ -18,7 +18,6 @@ class EkstraBladetDataset(Dataset):
             self.articles = load_dataset(f'Wouter01/testarticles', cache_dir=f"../../testarticles_data")["train"].to_pandas()
             self.history = load_dataset(f'Wouter01/testhistory', cache_dir=f"../../testhistory_data")["train"].to_pandas()
         else:
-            # TODO fix this
             if args.evaltrain:
                 self.behaviors = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'behaviors', cache_dir=f"../../{args.dataset}_data")["train"]
                 self.articles = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'articles', cache_dir=f"../../{args.dataset}_data")["train"].to_pandas()
@@ -102,6 +101,7 @@ class EkstraBladetDataset(Dataset):
             for article_id in inview_articles:
                 article = self.articles.loc[article_id]
                 prompts.append(self.create_prompt(titles, subtitles, article["title"], article["subtitle"]))
+                categories.append(article["category_str"])
             
             clicked_articles = behavior["article_ids_clicked"]
             targets = [1 if article in clicked_articles else 0 for article in inview_articles]
@@ -132,7 +132,7 @@ class EkstraBladetDataset(Dataset):
         neg_sample = random.choice(unclicked_articles)
 
         # Get the article information
-        titles, subtitles = [], []  # last two are pos and neg samples
+        titles, subtitles = [], [] # last two are pos and neg samples
         for article_id in old_clicks.tolist() + [pos_sample, neg_sample]:
             article = self.articles.loc[article_id]
             titles.append(article["title"])

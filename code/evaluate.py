@@ -16,7 +16,7 @@ def evaluate(args, model, data_loader):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     results = defaultdict(int)
 
-    metrics_evaluator = MetricsEvaluator(k=5)
+    metrics_evaluator = MetricsEvaluator(k=5, T=args.T)
 
     model.to(device)
     model.eval()
@@ -31,16 +31,13 @@ def evaluate(args, model, data_loader):
             labels = np.array(batch["targets_one_hot"])
         else:
             labels = np.array(batch["targets"])
-        # recommendations = batch["recommendations"].cpu().numpy().tolist()
-        # candidate_items = batch.get("candidate_items", []).cpu().numpy().tolist()  # Optional
-        # click_histories = batch.get("click_histories", []).cpu().numpy().tolist()  # Optional
+        
+        categories = np.array(batch["categories"])
 
         metrics = metrics_evaluator.compute_metrics({
             'scores': scores,
             'labels': labels,
-            # 'recommendations': recommendations,
-            # 'candidate_items': candidate_items,
-            # 'click_histories': click_histories
+            'categories': categories,
         })
 
         for key in metrics:

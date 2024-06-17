@@ -16,38 +16,35 @@ from beyond_accuracy import (
 
 
 class MetricsEvaluator:
-    def __init__(self, k=5):
+    def __init__(self, k=5, T=4):
         self.k = k
+        self.T = T
 
     def compute_metrics(self, output):
         scores = output['scores']
         labels = output['labels']
+        categories = output['categories']
 
         assert scores.shape == labels.shape, f"{scores.shape} {labels.shape}"
-
-        # recommendations = output['recommendations']
-        # candidate_items = output.get('candidate_items', [])
-        # click_histories = output.get('click_histories', [])
-
-        # top_k_recommendations = self.get_top_k_recommendations(recommendations, scores)
         
         return {
-            f'ndcg@{self.k}': self.ndcg_at_k(scores, labels),
+            f'ndcg': self.ndcg_at_k(scores, labels, 10**6),
+            f'ndcg@{self.k}': self.ndcg_at_k(scores, labels, self.k),
             f'mrr': self.mrr_at_k(scores, labels, 10**6),
             f'mrr@{self.k}': self.mrr_at_k(scores, labels, self.k),
             f'precision@1': self.precision_at_k(scores, labels, 1),
             f'recall@{self.k}': self.recall_at_k(scores, labels),
-            # f'mean_squared_error@{self.k}': self.mean_squared_error_at_k(labels, scores),
-            # f'accuracy@{self.k}': self.accuracy_score_at_k(labels, scores),
-            # f'f1@{self.k}': self.f1_score_at_k(labels, scores),
             f'hit_ratio@{self.k}': self.hit_ratio_at_k(scores, labels),
-            # 'log_loss': self.log_loss_at_k(labels, scores),
-            # 'intralist_diversity': intralist_diversity(top_k_recommendations),
-            # 'coverage_count': coverage_count(recommendations),
-            # 'coverage_fraction': coverage_fraction(recommendations, candidate_items),
-            # 'serendipity': serendipity(recommendations, click_histories),
-            # 'novelty': novelty(recommendations),
-            # 'index_of_dispersion': index_of_dispersion(recommendations.flatten())
+            f'diversity@1': self.diversity_at_k(scores, categories, k=1),
+            f'diversity@2': self.diversity_at_k(scores, categories, k=2),
+            f'diversity@3': self.diversity_at_k(scores, categories, k=3),
+            f'diversity@4': self.diversity_at_k(scores, categories, k=4),
+            f'diversity@5': self.diversity_at_k(scores, categories, k=5),
+            f'intra_list_diversity@1': self.intra_list_diversity_at_k(scores, categories, k=1),  # just a check
+            f'intra_list_diversity@2': self.intra_list_diversity_at_k(scores, categories, k=2),
+            f'intra_list_diversity@3': self.intra_list_diversity_at_k(scores, categories, k=3),
+            f'intra_list_diversity@4': self.intra_list_diversity_at_k(scores, categories, k=4),
+            f'intra_list_diversity@5': self.intra_list_diversity_at_k(scores, categories, k=5),
         }
 
     def get_top_k_recommendations(self, recommendations, scores):
@@ -57,14 +54,13 @@ class MetricsEvaluator:
             top_k_recommendations.append([rec_list[i] for i in top_k_indices])
         return np.array(top_k_recommendations)
 
-    def ndcg_at_k(self, scores, labels):
-        best = self.dcg_score_at_k(labels, labels)
-        actual = self.dcg_score_at_k(scores, labels)
-        assert actual <= best, f"{actual} > {best}"
+    def ndcg_at_k(self, scores, labels, k=5):
+        best = self.dcg_score_at_k(labels, labels, k)
+        actual = self.dcg_score_at_k(scores, labels, k)
         return actual / best
 
-    def dcg_score_at_k(self, scores, labels):
-        k = min(len(labels), self.k)
+    def dcg_score_at_k(self, scores, labels, k):
+        k = min(len(labels), k)
         order = np.argsort(scores)[::-1]
         y_true = np.take(labels, order[:k])
         gains = 2**y_true - 1
@@ -118,3 +114,22 @@ class MetricsEvaluator:
         order = np.argsort(scores)[::-1][:self.k]
         labels_at_k = np.take(labels, order)
         return np.any(labels_at_k)
+
+    def diversity_at_k(self, scores, categories, k):
+        # Count the number of categories in topk that were not in the clicked categories
+        clicked_categories = categories[:self.T]
+        inview_categories = categories[self.T:]
+        order = np.argsort(scores)[::-1][:k]
+        inview_categories_at_k = np.take(inview_categories, order)
+        diversity = 0
+        for category in inview_categories_at_k:
+            if category not in clicked_categories:
+                diversity += 1
+        return diversity / k
+
+    def intra_list_diversity_at_k(self, scores, categories, k):
+        # Count the number of categories in topk that are unique
+        inview_categories = categories[self.T:]
+        order = np.argsort(scores)[::-1][:k]
+        inview_categories_at_k = np.take(inview_categories, order)
+        return len(set(inview_categories_at_k)) / k
