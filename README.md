@@ -40,7 +40,7 @@ cd code
 
 We provide many options for running the code:
 
-```bash
+```
 usage: train.py [-h] [--backbone BACKBONE] [--tokenizer TOKENIZER]
                 [--from_checkpoint FROM_CHECKPOINT] [--lr LR] [--labda LABDA]
                 [--datafraction DATAFRACTION] [--T T] [--n_epochs N_EPOCHS]
@@ -51,33 +51,25 @@ usage: train.py [-h] [--backbone BACKBONE] [--tokenizer TOKENIZER]
                 [--prompt {titles,subtitles,QA+,diversity,pubtime}]
 
 options:
-  -h, --help            show this help message and exit
-  --backbone BACKBONE   backbone model
-  --tokenizer TOKENIZER
-                        tokenizer model
-  --from_checkpoint FROM_CHECKPOINT
-                        load model from checkpoint
-  --lr LR               learning rate
-  --labda LABDA         lambda for pairwise ranking loss
-  --datafraction DATAFRACTION
-                        fraction of data to use
-  --T T                 number of previous clicked articles to include in the
-                        prompt
-  --n_epochs N_EPOCHS   number of epochs
-  --batch_size BATCH_SIZE
-                        batch size
-  --num_workers NUM_WORKERS
-                        number of workers
-  --current_step CURRENT_STEP
-                        starting step for cosine learning rate
-  --warmup_steps WARMUP_STEPS
-                        number of warmup steps
-  --old                 old way of loading from pretrained model
-  --debug               debug mode
-  --evaltrain           for evaluating on training set
-  --use_wandb           Use Weights and Biases for logging
-  --dataset DATASET     dataset to train on
-  --model {QA,QA+,CG}   model to train
+  -h, --help                            show this help message and exit
+  --backbone BACKBONE                   backbone model
+  --tokenizer TOKENIZER                 tokenizer model
+  --from_checkpoint FROM_CHECKPOINT     load model from checkpoint
+  --lr LR                               learning rate
+  --labda LABDA                         lambda for pairwise ranking loss
+  --datafraction DATAFRACTION           fraction of data to use
+  --T T                                 number of previous clicked articles to include in the prompt
+  --n_epochs N_EPOCHS                   number of epochs
+  --batch_size BATCH_SIZE               batch size
+  --num_workers NUM_WORKERS             number of workers
+  --current_step CURRENT_STEP           starting step for cosine learning rate
+  --warmup_steps WARMUP_STEPS           number of warmup steps
+  --old                                 old way of loading from pretrained model
+  --debug                               debug mode
+  --evaltrain                           for evaluating on training set
+  --use_wandb                           Use Weights and Biases for logging
+  --dataset DATASET                     dataset to train on
+  --model {QA,QA+,CG}                   model to train
   --prompt {titles,subtitles,QA+,diversity,pubtime}
 ```
 
@@ -88,15 +80,30 @@ For overfitting on a small dataset, you can use:
 python train.py --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 10000 --dataset demo --datafraction 0.001 --n_epochs 10000 --warmup_steps 500 --model [QA/QA+/CG] --prompt [titles/subtitles/QA+/diversity/pubtime]
 ```
 
-For evaluating a pretrained model:
+We ran many experiments, see [main.sh](main.sh) for all commands we used. Uncomment the ones you want to reproduce. Subsequently run:
+
 ```bash
-python evaluate.py
+./main.sh
 ```
 
-For creating a submission file with a pretrained model:
+## Checkpoint
+
+We provide the checkpoint from the model that we used to obtain the results we submitted: https://drive.google.com/file/d/1PpdwiHut4mmPB363HiNJVmOEcZsbTB5l/view?usp=sharing 
+
+
+After placing this checkpoint in the checkpoints folder, you can evaluate this model with:
+
+TODO: make this simpler
+```bash
+python evaluate.py --from_checkpoint ../../../checkpoint/model.pth
+```
+
+And for creating a submission file with this model:
 ```bash
 python create_submission_file.py
 ```
+
+Note that the model is deterministic so you this will just provide the same results a in the [results](results/) folder and the ones on the leaderboard.
 
 ## Notebooks
 
