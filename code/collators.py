@@ -48,6 +48,30 @@ class CollatorValidation:
             "categories": categories,  # can be used for diversity evaluation
         }
 
+class CollatorUnderstand:
+
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, batch):
+        # TODO now relies on batch size 1
+        prompts = self.tokenizer([p for data in batch for p in data["prompts"]], return_tensors='pt', padding=True, truncation=True)
+        
+        targets = batch[0]["targets"]
+        categories = batch[0]["categories"]
+        
+        with self.tokenizer.as_target_tokenizer():
+            decoder_start = self.tokenizer(['ja / nej' for data in batch for p in data["prompts"]], return_tensors="pt", padding=True, truncation=True)
+        
+        return {
+            "prompt_input_ids": prompts["input_ids"],
+            "prompt_attention_mask": prompts["attention_mask"],
+            "decoder_start": decoder_start["input_ids"],
+            "targets": targets,
+            "categories": categories,  # can be used for diversity evaluation
+            "prompts": [p for data in batch for p in data["prompts"]]
+        }
+
 class CollatorTest:
 
     def __init__(self, tokenizer):

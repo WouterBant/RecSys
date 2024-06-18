@@ -14,7 +14,7 @@ class BaseModel(nn.Module):
     def from_pretrained(cls, args):
         model = cls(args)
         state_dict = torch.load(args.from_checkpoint, map_location=model.device)
-        print(model.model.load_state_dict(state_dict), "\n\n\n\n\n\n")
+        print(model.model.load_state_dict(state_dict))
         return model
 
     def train_step(self, batch):

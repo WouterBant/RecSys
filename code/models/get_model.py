@@ -31,6 +31,6 @@ def get_model(args):
             print(e)
     
     if not args.old and len(args.from_checkpoint) > 4:
-        model.load_state_dict(torch.load(args.from_checkpoint))
+        model.load_state_dict(torch.load(args.from_checkpoint, map_location=args.device))
 
     return model
