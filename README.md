@@ -86,6 +86,8 @@ We ran many experiments, see [main.sh](main.sh) for all commands we used. Uncomm
 ./main.sh
 ```
 
+Note that we have Weights and Biases integration which can be used with the ```--use_wandb```  flag.
+
 ## Checkpoint
 
 We provide the checkpoint from the model that we used to obtain the results we submitted: https://drive.google.com/file/d/1PpdwiHut4mmPB363HiNJVmOEcZsbTB5l/view?usp=sharing 

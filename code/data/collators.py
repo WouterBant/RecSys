@@ -124,6 +124,6 @@ class CollatorQAfast:
             "pos_attention_mask": inputs["attention_mask"],
             "decoder_start": decoder_start["input_ids"],
             "targets_idxs": positions_tensor,
-            "targets_one_hot": batch[0]["target_one_hot"],  # TODO assumes batch size 1 for eval
+            "targets": batch[0]["target_one_hot"],  # TODO assumes batch size 1 for eval
             "categories": batch[0]["categories"], 
         }

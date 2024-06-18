@@ -1,10 +1,4 @@
 import numpy as np
-from sklearn.metrics import (  # TODO probably remove these later as not used, remove sklearn from dependencies
-    mean_squared_error,
-    accuracy_score,
-    f1_score,
-    log_loss,
-)
 
 
 class MetricsEvaluator:
@@ -69,28 +63,6 @@ class MetricsEvaluator:
                 rr_score = 1.0 / (i + 1)
                 break
         return rr_score
-
-    def mean_squared_error_at_k(self, y_true, y_pred):
-        order = np.argsort(y_pred)[::-1][:self.k]
-        return mean_squared_error(np.take(y_true, order), np.take(y_pred, order))
-
-    def accuracy_score_at_k(self, y_true, y_pred):
-        order = np.argsort(y_pred)[::-1][:self.k]
-        y_pred_at_k = np.take(y_pred, order)
-        y_true_at_k = np.take(y_true, order)
-        y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
-        return accuracy_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
-
-    def f1_score_at_k(self, y_true, y_pred):
-        order = np.argsort(y_pred)[::-1][:self.k]
-        y_pred_at_k = np.take(y_pred, order)
-        y_true_at_k = np.take(y_true, order)
-        y_pred_at_k_binary = (y_pred_at_k > 0.5).astype(int)
-        return f1_score(y_true_at_k.flatten(), y_pred_at_k_binary.flatten())
-
-    def log_loss_at_k(self, y_true, y_pred):
-        order = np.argsort(y_pred)[::-1][:self.k]
-        return log_loss(np.take(y_true, order), np.take(y_pred, order))
 
     def precision_at_k(self, scores, labels, k=1):
         order = np.argsort(scores)[::-1]

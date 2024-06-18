@@ -1,6 +1,5 @@
 import argparse
 
-# TODO make this where all files get the args from
 
 def argparser():
     parser = argparse.ArgumentParser()

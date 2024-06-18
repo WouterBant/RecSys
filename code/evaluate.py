@@ -13,7 +13,7 @@ from utils.argparser import argparser
 from utils.metrics import MetricsEvaluator
 
 
-def evaluate(args, model, data_loader):
+def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     results = defaultdict(int)
 
@@ -21,6 +21,8 @@ def evaluate(args, model, data_loader):
 
     model.to(device)
     model.eval()
+
+    # Count number of examples in dataset
     total = 0
 
     for batch in tqdm(data_loader):
@@ -30,11 +32,7 @@ def evaluate(args, model, data_loader):
 
         # Collect data for metric evaluation
         scores = probs.squeeze().cpu().numpy()
-        if args.model == "QA+":
-            labels = np.array(batch["targets_one_hot"])  # TODO make naming consistent
-        else:
-            labels = np.array(batch["targets"])
-        
+        labels = np.array(batch["targets"])
         categories = np.array(batch["categories"])
 
         metrics = metrics_evaluator.compute_metrics({
@@ -43,14 +41,16 @@ def evaluate(args, model, data_loader):
             'categories': categories,
         })
 
+        # Sum the metrics
         for key in metrics:
             results[key] += metrics[key]*len(scores)
         total += len(scores)
     
+    # Take the average of the metrics over the dataset
     for key in results:
         results[key] /= total
     
-    # If using wandb, log the metrics
+    # If using wandb, log the metrics (bit useless, in a second will be written to a file anyway)
     if args.use_wandb:
         wandb.log(results)
   

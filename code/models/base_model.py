@@ -3,6 +3,9 @@ from torch import nn
 
 
 class BaseModel(nn.Module):
+    """
+    Base class for all models.
+    """
 
     def __init__(self, args):
         super(BaseModel, self).__init__()
@@ -18,7 +21,7 @@ class BaseModel(nn.Module):
         return model
 
     def train_step(self, batch):
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement this method.")
 
     def train_step_forward(self, batch):
         # Forward pass for the positive and negative examples
@@ -35,7 +38,7 @@ class BaseModel(nn.Module):
         return pos_outputs, neg_outputs
 
     def validation_step(self, batch):
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement this method.")
     
     def validation_step_forward(self, batch):
         # Forward pass for the positive and negative examples together

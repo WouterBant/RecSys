@@ -40,6 +40,7 @@ class QA_fast_model(BaseModel):
         max_incorrect_prob = incorrect_probs.max(dim=-1).values
 
         # Ranking loss to ensure correct class probability is higher than incorrect by at least the margin
+        # Faster than pairwise ranking loss, but makes the model much worse we show
         rank_loss = torch.clamp(0.1 - (correct_prob - max_incorrect_prob), min=0).mean()
 
         # Combine the cross-entropy loss with the ranking loss

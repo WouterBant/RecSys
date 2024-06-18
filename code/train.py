@@ -3,10 +3,8 @@ from torch.cuda.amp import GradScaler
 from transformers import AutoTokenizer
 import os
 import copy
-import json
 import wandb
 from tqdm import tqdm
-from datetime import datetime
 
 from evaluate import evaluate
 from data.dataloader import get_loader

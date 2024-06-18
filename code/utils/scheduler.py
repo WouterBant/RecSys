@@ -1,9 +1,14 @@
-from torch.optim import Optimizer
 import math
 
 
 class CosineWarmupScheduler:
-    def __init__(self, optimizer: Optimizer, max_lr: float, warmup_steps: int, total_steps: int):
+    """
+    The iterative application of LayerNorms and Dropout in the Transformer model lead to a high variance 
+    in the gradients in the early training steps. To cope with this, the learning rate is increased linearly
+    for a few steps before being decayed using a standard learning rate decay (now in the form of cosine annealing).
+    """
+
+    def __init__(self, optimizer, max_lr, warmup_steps, total_steps):
         self.optimizer = optimizer
         self.max_lr = max_lr
         self.warmup_steps = warmup_steps
@@ -13,9 +18,9 @@ class CosineWarmupScheduler:
     def step(self):
         self.current_step += 1
 
-        if self.current_step <= self.warmup_steps:
+        if self.current_step <= self.warmup_steps:  # Linear warmup phase
             lr = self.max_lr * (self.current_step / self.warmup_steps)
-        elif self.current_step <= self.total_steps:
+        elif self.current_step <= self.total_steps:  # Cosine annealing phase
             lr = self.max_lr * 0.5 * (1 + math.cos(math.pi * (self.current_step - self.warmup_steps) / (self.total_steps - self.warmup_steps)))
         else:
             lr = 0

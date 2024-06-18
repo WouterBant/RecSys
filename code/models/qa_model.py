@@ -6,6 +6,9 @@ from .base_model import BaseModel
 
 
 class QA_model(BaseModel):
+    """
+    This class is a wrapper for the Question Answering mT5 model.
+    """
 
     def __init__(self, args):
         super(QA_model, self).__init__(args)

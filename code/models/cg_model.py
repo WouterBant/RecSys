@@ -7,6 +7,10 @@ from .base_model import BaseModel
 
 
 class CG_model(BaseModel):
+    """
+    This class is a wrapper for the Conditional Generation mT5 model.
+    This is to our understanding the closest model to the one used by PGNR.
+    """
 
     def __init__(self, args):
         super(CG_model, self).__init__(args)
