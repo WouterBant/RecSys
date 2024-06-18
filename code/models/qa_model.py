@@ -47,6 +47,3 @@ class QA_model(BaseModel):
         probs = torch.softmax(logits, dim=-1)[:, 0]
 
         return probs
-
-    def test_step(self, batch):
-        pass

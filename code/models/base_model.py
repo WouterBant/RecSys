@@ -46,9 +46,6 @@ class BaseModel(nn.Module):
                 decoder_input_ids=batch["decoder_start"].to(self.device)
             )
         return outputs
-
-    def test_step(self, batch):
-        raise NotImplementedError
     
     def compute_rank_loss(self, prob_pos, prob_neg):
         diff = torch.sigmoid(prob_pos - prob_neg)

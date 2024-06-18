@@ -132,7 +132,6 @@ env.bak/
 venv.bak/
 ebnerd-data-test/
 ebnerd-data-large/
-data/
 demo_data/
 large_data/
 
