@@ -15,6 +15,9 @@ class EkstraBladetDataset(Dataset):
         # Download the dataset from huggingface
         if split == "test":
             self.behaviors = load_dataset(f'Wouter01/testbehaviors', cache_dir=f"../../testbehaviors_data")["train"]
+            self.behaviors = self.behaviors.select(range(len(self.behaviors) - 270000, len(self.behaviors)))
+            print(len(self.behaviors))
+            print(self.behaviors.shape)
             self.articles = load_dataset(f'Wouter01/testarticles', cache_dir=f"../../testarticles_data")["train"].to_pandas()
             self.history = load_dataset(f'Wouter01/testhistory', cache_dir=f"../../testhistory_data")["train"].to_pandas()
         elif args.evaltrain:  # TODO fix this also in understand notebook, seperate args for return type and data to use

@@ -25,16 +25,20 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
     data_loader = get_loader(args, 'test', tokenizer)
     model.eval()
 
-    previous_impression_id = None
+    previous_impression_id = 0
     impression_probs = []
     
     with open(output_filename, 'w') as f:
 
         for batch in tqdm(data_loader):
             impression_id = batch["impression_ids"]
+            if impression_id[0] != 0:
+                continue
             input_ids = batch["prompt_input_ids"].to(device)
             attention_mask = batch["prompt_attention_mask"].to(device)
             decoder_input_ids = batch["decoder_start"].to(device)
+            
+            impression_probs = []
 
             # Process the batch in chunks of at most 16 (some examples have many inview articles)
             for start_idx in range(0, len(impression_id), 16):
@@ -51,18 +55,10 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
 
                 prob_yes = outputs.tolist()
                 for p, i in zip(prob_yes, chunk_impression_id):
-                    if previous_impression_id != i:
-                        if previous_impression_id is not None:
-                            # Write previous impression's predictions
-                            sorted_idxs = np.argsort(np.array(impression_probs)) + 1
-                            f.write(f"{previous_impression_id} [{','.join(map(str, sorted_idxs.tolist()))}]\n")
-                            f.flush()
-
-                        # Reset impression_logits and previous_impression_id
-                        impression_probs = []
-                        previous_impression_id = i
-
                     impression_probs.append(p)
+            sorted_idxs = np.argsort(np.array(impression_probs)) + 1
+            f.write(f"{previous_impression_id} [{','.join(map(str, sorted_idxs.tolist()))}]\n")
+            f.flush()
 
         # Don't forget to write the last impression's predictions
         sorted_idxs = np.argsort(np.array(impression_probs))
