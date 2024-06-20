@@ -50,6 +50,24 @@ class EkstraBladetDataset(Dataset):
         old_clicks = history["article_id_fixed"]
         old_clicks = old_clicks[-min(len(old_clicks), self.T):]
 
+        if self.split == "validation":
+            # Get the past article information
+            titles, subtitles, categories = [], [], []
+            for article_id in old_clicks.tolist():
+                article = self.articles.loc[article_id]
+                titles.append(article["title"])
+                subtitles.append(article["subtitle"])
+                categories.append(article["category_str"])
+            
+            prompts = []
+            for article_id in inview_articles:
+                article = self.articles.loc[article_id]
+                prompts.append(self.create_prompt(titles, subtitles, article["title"], article["subtitle"]))
+            
+            clicked_articles = behavior["article_ids_clicked"]
+            targets = [1 if article in clicked_articles else 0 for article in inview_articles]
+            return prompts, targets, categories
+
         if self.split == "test":
             # Get the past article information
             titles, subtitles = [], []
@@ -123,6 +141,28 @@ class CollatorTrain:
             "neg_labels": neg_targets["input_ids"],
             "decoder_start": decoder_start["input_ids"],
         }
+    
+class CollatorValidation:
+
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, batch):
+        # TODO now relies on batch size 1
+        prompts = self.tokenizer([p for prompts, _, _ in batch for p in prompts], return_tensors='pt', padding=True, truncation=True)
+        targets = batch[0][1]
+        categories = batch[0][2]
+        
+        with self.tokenizer.as_target_tokenizer():
+            decoder_start = self.tokenizer(['ja / nej' for prompts, _, _ in batch for p in prompts], return_tensors="pt", padding=True, truncation=True)
+        
+        return {
+            "prompt_input_ids": prompts["input_ids"],
+            "prompt_attention_mask": prompts["attention_mask"],
+            "decoder_start": decoder_start["input_ids"],
+            "targets": targets,
+            "categories": categories  # can be used for diversity evaluation
+        }
 
 class CollatorTest:
 
@@ -151,12 +191,14 @@ def get_loader(args, split, tokenizer, debug=False):
     else:
         print("hi")
         create_prompt = create_prompt_subtitles
+    if split == "validation":
+        collator = CollatorValidation(tokenizer)
+        data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
+        return DataLoader(data, batch_size=1, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
     if split == "test":
         collator = CollatorTest(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
         return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
-    
-    assert args.dataset in ['demo', 'large'], 'dataset should be one of demo, large'
     
     collator = CollatorTrain(tokenizer)
     data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)

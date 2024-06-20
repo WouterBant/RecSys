@@ -63,7 +63,7 @@ def train(args):
         for batch in tqdm(data_loader_train):
             
             if n_steps % 1000 == 0:
-                torch.save(model.state_dict(), f"model_lr_{args.lr}_class_{args.use_classifier}_lab_{args.labda}__qa_{args.use_QA_model}_tit_{args.titles}.pth")
+                torch.save(model.state_dict(), f"checkpoints/model_lr_{args.lr}_class_{args.use_classifier}_lab_{args.labda}__qa_{args.use_QA_model}_tit_{args.titles}.pth")
             n_steps += 1
 
             # Forward pass for the positive and negative examples
@@ -159,7 +159,7 @@ def train(args):
         
         # validation
         if (epoch + 1) % args.eval_interval == 0:
-            results = evaluate(args, model, tokenizer, data_loader_val)
+            results = evaluate(args, model, data_loader_val)
 
             if args.use_wandb:
                 wandb.log(results)
@@ -168,15 +168,8 @@ def train(args):
             if results['accuracy'] > best_metric:
                 best_metric = results['accuracy']
                 best_model = copy.deepcopy(model.state_dict())
-                torch.save(model.state_dict(), 'best_model.pth')
+                torch.save(model.state_dict(), 'checkpoints/best_model.pth')
     
-    # test
-    model.load_state_dict(best_model)
-    model.eval()
-    # results = evaluate(model, 'test')
-    # if args.use_wandb:
-    #     wandb.log(results)  # TODO fix this + say it is for test set
-
     final_model = copy.deepcopy(model.state_dict())
     return results, final_model, best_model
 
