@@ -20,8 +20,8 @@ def argparser():
     parser.add_argument('--evaltrain', action='store_true', help='for evaluating on training set')
     parser.add_argument('--use_wandb', action='store_true', help='Use Weights and Biases for logging')
     parser.add_argument('--dataset', type=str, default='demo', help='dataset to train on')
-    parser.add_argument('--model', type=str, choices=["QA", "QA+", "CG"], default='CG', help='model to train')
-    parser.add_argument('--prompt', type=str, choices=["titles", "subtitles", "QA+", "diversity", "pubtime"], default='titles', help='model to train')
+    parser.add_argument('--model', type=str, choices=["QA", "QA+", "CG", "CGc"], default='CG', help='model to train')
+    parser.add_argument('--prompt', type=str, choices=["titles", "subtitles", "QA+", "diversity", "pubtime"], default='titles', help='prompt to use')
     args = parser.parse_args()
     print(args)
     return args

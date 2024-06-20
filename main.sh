@@ -7,7 +7,7 @@ cd code
 # Also, as mentioned in the paper, we don't train longer than 8 hours and earlier when no further improvement is observed.
 
 labda_values=(0.0 0.4)
-model_values=(QA CG)
+model_values=(QA CG CGc)
 prompt_values=(titles subtitles diversity pubtime)
 
 for labda in "${labda_values[@]}"; do

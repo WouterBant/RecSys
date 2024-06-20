@@ -1,12 +1,14 @@
 import torch
 
 from .cg_model import CG_model
+from .cg_classifier import CG_classifier_model
 from .qa_model import QA_model
 from .qa_fast_model import QA_fast_model
 
 
 model_mapping = {
     "CG": CG_model,
+    "CGc": CG_classifier_model,
     "QA": QA_model,
     "QA+": QA_fast_model
 }

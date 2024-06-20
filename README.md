@@ -47,7 +47,7 @@ usage: train.py [-h] [--backbone BACKBONE] [--tokenizer TOKENIZER]
                 [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS]
                 [--current_step CURRENT_STEP] [--warmup_steps WARMUP_STEPS]
                 [--old] [--debug] [--evaltrain] [--use_wandb]
-                [--dataset DATASET] [--model {QA,QA+,CG}]
+                [--dataset DATASET] [--model {QA,QA+,CG,CGc}]
                 [--prompt {titles,subtitles,QA+,diversity,pubtime}]
 
 options:
@@ -69,7 +69,7 @@ options:
   --evaltrain                           for evaluating on training set
   --use_wandb                           Use Weights and Biases for logging
   --dataset DATASET                     dataset to train on
-  --model {QA,QA+,CG}                   model to train
+  --model {QA,QA+,CG, CGc}                   model to train
   --prompt {titles,subtitles,QA+,diversity,pubtime}
 ```
 
@@ -77,7 +77,7 @@ options:
 For overfitting on a small dataset, you can use:
 
 ```bash
-python train.py --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 10000 --dataset demo --datafraction 0.001 --n_epochs 10000 --warmup_steps 500 --model [QA/QA+/CG] --prompt [titles/subtitles/QA+/diversity/pubtime]
+python train.py --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 10000 --dataset demo --datafraction 0.001 --n_epochs 10000 --warmup_steps 500 --model [QA/QA+/CG/CGc] --prompt [titles/subtitles/QA+/diversity/pubtime]
 ```
 
 We ran many experiments, see [main.sh](main.sh) for all commands we used. Uncomment the ones you want to reproduce. Subsequently run:
