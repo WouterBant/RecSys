@@ -162,3 +162,5 @@ dmypy.json
 cython_debug/predictions.txt
 
 code/model.pth
+
+code/checkpoints/model_0.0001.pth
