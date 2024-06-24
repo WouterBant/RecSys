@@ -1,6 +1,5 @@
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
-from transformers import AutoTokenizer
 import random
 
 from data.collators import *

@@ -45,15 +45,15 @@ def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
         for key in metrics:
             results[key] += metrics[key]
         total += 1
-    
+
     # Take the average of the metrics over the dataset
     for key in results:
         results[key] /= total
-    
-    # If using wandb, log the metrics (bit useless, in a second will be written to a file anyway)
+
+    # If using wandb, log the metrics
     if args.use_wandb:
         wandb.log(results)
-  
+
     return results
 
 
@@ -63,7 +63,15 @@ if __name__ == '__main__':
     name = "train" if args.evaltrain else "validation"
 
     if args.use_wandb:
-        os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
+        try:
+            os.environ["WANDB_API_KEY"] = os.getenv("WANDB_API_KEY")
+        except KeyError:
+            print("Please set your WANBD_API_KEY as an environment variable")
+            print("You can find your API key at: https://wandb.ai/authorize")
+            print("You can set it as an environment variable using:")
+            print("export WANDB_API_KEY='your_api_key'")
+            exit(1)
+
         wandb.init(
             project=f"eval_{name}_{args.from_checkpoint.split('/')[-1]}",
             group=f"{args.backbone}",
@@ -75,5 +83,9 @@ if __name__ == '__main__':
     data_loader_val = get_loader(args, 'validation', tokenizer)
     results = evaluate(args, model, data_loader_val)
 
-    with open(f"../results/{name}/{args.from_checkpoint.split('/')[-1][:-4]}.json", 'w') as file:
+    filename = (
+        f"../results/{name}/"
+        f"{args.from_checkpoint.split('/')[-1][:-4]}.json"
+    )
+    with open(filename, 'w') as file:
         json.dump(results, file)

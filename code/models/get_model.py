@@ -13,6 +13,7 @@ model_mapping = {
     "QA+": QA_fast_model
 }
 
+
 def get_model(args):
     """
     Load the model either from scratch or from a checkpoint.
@@ -30,9 +31,10 @@ def get_model(args):
             break
         except Exception as e:
             print(e)
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     if not args.old and len(args.from_checkpoint) > 4:
-        print(model.load_state_dict(torch.load(args.from_checkpoint, map_location=device)))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model_state_dict = torch.load(args.from_checkpoint, map_location=device)
+        print(model.load_state_dict(model_state_dict))
 
     return model

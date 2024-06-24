@@ -12,7 +12,8 @@ class QA_model(BaseModel):
 
     def __init__(self, args):
         super(QA_model, self).__init__(args)
-        self.model = MT5ForQuestionAnswering.from_pretrained(args.backbone).to(self.device)
+        self.model = MT5ForQuestionAnswering.from_pretrained(args.backbone)
+        self.model.to(self.device)
         self.ce = nn.CrossEntropyLoss()
 
     def train_step(self, batch):
@@ -25,13 +26,15 @@ class QA_model(BaseModel):
         # Compute the probabilities
         pos_probs = torch.softmax(pos_logits, dim=-1)
         neg_probs = torch.softmax(neg_logits, dim=-1)
-        pos_prob_yes = pos_probs[:,0]  # B,T -> B
-        neg_prob_yes = neg_probs[:,0]  # B,T -> B
+        pos_prob_yes = pos_probs[:, 0]  # B,T -> B
+        neg_prob_yes = neg_probs[:, 0]  # B,T -> B
 
         # Create the targets
         batch_size = pos_probs.shape[0]
-        pos_target = torch.tensor(batch_size * [0]).to(self.device)  # 0 = idx of 'ja' token in decoder input sequence 
-        neg_target = torch.tensor(batch_size * [3]).to(self.device)  # 3 = idx of 'nej' token in decoder input sequence
+
+        # 0 = idx of 'ja' and 1 = idx of 'nej' in decoder input sequence
+        pos_target = torch.tensor(batch_size * [0]).to(self.device)
+        neg_target = torch.tensor(batch_size * [3]).to(self.device)
 
         # Compute the loss
         loss_nll = self.ce(pos_logits, pos_target) + self.ce(neg_logits, neg_target)
@@ -48,5 +51,4 @@ class QA_model(BaseModel):
 
         # Only consider the probability for 'ja'
         probs = torch.softmax(logits, dim=-1)[:, 0]
-
         return probs

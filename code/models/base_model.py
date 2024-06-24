@@ -26,7 +26,7 @@ class BaseModel(nn.Module):
     def train_step_forward(self, batch):
         # Forward pass for the positive and negative examples
         pos_outputs = self.model(
-            input_ids=batch["pos_input_ids"].to(self.device), 
+            input_ids=batch["pos_input_ids"].to(self.device),
             attention_mask=batch["pos_attention_mask"].to(self.device),
             decoder_input_ids=batch["decoder_start"].to(self.device),
         )
@@ -39,17 +39,17 @@ class BaseModel(nn.Module):
 
     def validation_step(self, batch):
         raise NotImplementedError("Subclasses must implement this method.")
-    
+
     def validation_step_forward(self, batch):
         # Forward pass for the positive and negative examples together
         with torch.no_grad():
             outputs = self.model(
-                input_ids=batch["prompt_input_ids"].to(self.device), 
+                input_ids=batch["prompt_input_ids"].to(self.device),
                 attention_mask=batch["prompt_attention_mask"].to(self.device),
                 decoder_input_ids=batch["decoder_start"].to(self.device)
             )
         return outputs
-    
+
     def compute_rank_loss(self, prob_pos, prob_neg):
         diff = torch.sigmoid(prob_pos - prob_neg)
         return -torch.log(1e-8 + diff)

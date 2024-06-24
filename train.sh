@@ -6,8 +6,6 @@ log_error() {
 
 trap 'log_error $LINENO "$BASH_COMMAND"' ERR
 
-cd code
-
 
 # ----------------------------------------------------------------------------------
 # It's important to note that:
@@ -17,6 +15,8 @@ cd code
 # - if you decide to increase/decrease the batch size we recommend changing the learning rate by the same factor
 # ----------------------------------------------------------------------------------
 
+
+cd code
 
 # python train.py --batch_size 32 --labda 0.0 --dataset large --model CGc --prompt titles
 # python train.py --batch_size 32 --labda 0.4 --dataset large --model CGc --prompt titles

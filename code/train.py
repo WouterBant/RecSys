@@ -20,28 +20,43 @@ def train(args):
     data_loader_train = get_loader(args, 'train', tokenizer)
     data_loader_val = get_loader(args, 'validation', tokenizer)
 
-    scheduler = CosineWarmupScheduler(optimizer, max_lr=args.lr, warmup_steps=args.warmup_steps, total_steps=len(data_loader_train) * args.n_epochs)
+    scheduler = CosineWarmupScheduler(
+        optimizer,
+        max_lr=args.lr,
+        warmup_steps=args.warmup_steps,
+        total_steps=len(data_loader_train) * args.n_epochs
+    )
     scheduler.current_step = args.current_step
 
-    best_metric, best_model = 0, None
+    best_model = None
     scaler = GradScaler()
-    best_mrr = 0
-    n_steps = 0
+    best_mrr = n_steps = 0
+
     for epoch in tqdm(range(args.n_epochs)):
         model.train()
         total_loss = 0
 
         for batch in tqdm(data_loader_train):
-            
+
             # Checkpointing every 2000 steps
             if n_steps % 2000 == 0:
-                torch.save(model.state_dict(), f"../checkpoints/model_lr_{args.lr}_lab_{args.labda}_model_{args.model}_prompt_{args.prompt}.pth")
+                file_path = (
+                    f"../checkpoints/model_lr_{args.lr}_"
+                    f"lab_{args.labda}_model_{args.model}_"
+                    f"prompt_{args.prompt}.pth"
+                )
+                torch.save(model.state_dict(), file_path)
 
                 # Also save the best model on the validation set
                 results = evaluate(args, model, data_loader_val)
                 if results["mrr"] > best_mrr:
                     best_mrr = results["mrr"]
-                    torch.save(model.state_dict(), f"../checkpoints/bestmodel_lr_{args.lr}_lab_{args.labda}_model_{args.model}_prompt_{args.prompt}.pth")
+                    best_model_path = (
+                        f"../checkpoints/bestmodel_lr_{args.lr}_"
+                        f"lab_{args.labda}_model_{args.model}_"
+                        f"prompt_{args.prompt}.pth"
+                    )
+                    torch.save(model.state_dict(), best_model_path)
 
             n_steps += 1
 
@@ -61,7 +76,9 @@ def train(args):
             total_loss += loss.item()
 
             if args.use_wandb:
-                accuracy = (pos_prob_yes > neg_prob_yes).float().mean()  # Same two used for pair wise rank loss
+                # From pairwise rank loss (if available else 1)
+                accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
+
                 wandb.log({
                     'batch_loss': loss.item(),
                     'batch_accuracy': accuracy.item(),
@@ -69,17 +86,35 @@ def train(args):
                     'avg_pos_prob_yes': pos_prob_yes.mean(),
                     'avg_neg_prob_yes': neg_prob_yes.mean(),
                 })
-    
+
     final_model = copy.deepcopy(model.state_dict())
     return results, final_model, best_model
+
 
 if __name__ == '__main__':
     args = argparser()
 
     if args.use_wandb:
-        os.environ["WANDB_API_KEY"] = '26de9d19e20ea7e7f7352e5b36f139df8d145bc8'  # TODO fill this in
+        try:
+            os.environ["WANDB_API_KEY"] = os.getenv("WANDB_API_KEY")
+        except KeyError:
+            print("Please set your WANBD_API_KEY as an environment variable")
+            print("You can find your API key at: https://wandb.ai/authorize")
+            print("You can set it as an environment variable using:")
+            print("export WANDB_API_KEY='your_api_key'")
+            exit(1)
+
+        project = (
+            f"train_{args.backbone.split('/')[1]}_"
+            f"{args.dataset}_"
+            f"n_epochs_{args.n_epochs}_"
+            f"lr_{args.lr}_"
+            f"lab_{args.labda}_"
+            f"model_{args.model}_"
+            f"prompt_{args.prompt}"
+        )
         wandb.init(
-            project=f"train_{args.backbone.split('/')[1]}_{args.dataset}_n_epochs_{args.n_epochs}_lr_{args.lr}_lab_{args.labda}__model_{args.model}_prompt_{args.prompt}",
+            project=project,
             group=f"{args.backbone}",
             entity="RecSysPGNR",
         )
