@@ -2,28 +2,43 @@ from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 import random
 
-from data.collators import *
-from utils.prompt_templates import *
+from data.collators import (
+    CollatorTrain,
+    CollatorValidation,
+    CollatorTest,
+    CollatorQAfast
+)
+from utils.prompt_templates import (
+    create_prompt_titles,
+    create_prompt_subtitles,
+    create_prompt_diversity,
+    create_prompt_w_publishtime,
+    create_prompt_qa_fast
+)
 
 
 class EkstraBladetDataset(Dataset):
 
     def __init__(self, args, create_prompt, split="train", debug=False):
         self.split = split
-        
+
         # Download the dataset from huggingface
         if split == "test":
-            self.behaviors = load_dataset(f'Wouter01/testbehaviors', cache_dir=f"../../testbehaviors_data")["train"]
-            self.articles = load_dataset(f'Wouter01/testarticles', cache_dir=f"../../testarticles_data")["train"].to_pandas()
-            self.history = load_dataset(f'Wouter01/testhistory', cache_dir=f"../../testhistory_data")["train"].to_pandas()
-        elif args.evaltrain:  # TODO fix this also in understand notebook, seperate args for return type and data to use
-            self.behaviors = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'behaviors', cache_dir=f"../../{args.dataset}_data")["train"]
-            self.articles = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'articles', cache_dir=f"../../{args.dataset}_data")["train"].to_pandas()
-            self.history = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'history', cache_dir=f"../../{args.dataset}_data")["train"].to_pandas()
+            self.behaviors = load_dataset('Wouter01/testbehaviors', cache_dir="../../testbehaviors_data")["train"]
+            self.articles = load_dataset('Wouter01/testarticles', cache_dir="../../testarticles_data")["train"].to_pandas()
+            self.history = load_dataset('Wouter01/testhistory', cache_dir="../../testhistory_data")["train"].to_pandas()
+        elif args.evaltrain:
+            path = f'Wouter01/RecSys_{args.dataset}'
+            cache_dir = f"../../{args.dataset}_data"
+            self.behaviors = load_dataset(path, 'behaviors', cache_dir=cache_dir)["train"]
+            self.articles = load_dataset(path, 'articles', cache_dir=cache_dir)["train"].to_pandas()
+            self.history = load_dataset(path, 'history', cache_dir=cache_dir)["train"].to_pandas()
         else:
-            self.behaviors = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'behaviors', cache_dir=f"../../{args.dataset}_data")[split]
-            self.articles = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'articles', cache_dir=f"../../{args.dataset}_data")["train"].to_pandas()
-            self.history = load_dataset(f'Wouter01/RecSys_{args.dataset}', 'history', cache_dir=f"../../{args.dataset}_data")[split].to_pandas()
+            path = f'Wouter01/RecSys_{args.dataset}'
+            cache_dir = f"../../{args.dataset}_data"
+            self.behaviors = load_dataset(path, 'behaviors', cache_dir=cache_dir)[split]
+            self.articles = load_dataset(path, 'articles', cache_dir=cache_dir)["train"].to_pandas()
+            self.history = load_dataset(path, 'history', cache_dir=cache_dir)[split].to_pandas()
 
         # Set fast lookup for identifier keys
         self.history.set_index("user_id", inplace=True)
@@ -46,14 +61,14 @@ class EkstraBladetDataset(Dataset):
             article = self.articles.loc[article_id]
             titles_clicked.append(article["title"])
             categories.append(article["category_str"])
-        
+
         random.shuffle(inview_articles)
         titles_inview = []
         for article_id in inview_articles:
             article = self.articles.loc[article_id]
             titles_inview.append(article["title"])
             categories.append(article["category_str"])
-        
+
         targets = [0]*len(inview_articles)
         target_idx = -1
         for idx, i in enumerate(inview_articles):
@@ -65,16 +80,18 @@ class EkstraBladetDataset(Dataset):
 
         return {
             "prompt": self.create_prompt(titles_clicked),
-            "decoder_input": " > @ ".join(titles_inview) + " > @ " ,  # Append seperator tokens (@)
+            "decoder_input": " > @ ".join(titles_inview) + " > @ ",  # Append seperator tokens (@)
             "target": target_idx,
             "target_one_hot": targets,
             "categories": categories,
         }
-    
+
     def train_data(self, behavior, inview_articles, old_clicks):
         # Pick random positive and negative samples
         clicked_articles = behavior["article_ids_clicked"]
-        unclicked_articles = [article for article in inview_articles if article not in clicked_articles]
+        unclicked_articles = [
+            article for article in inview_articles if article not in clicked_articles
+        ]
         pos_sample = random.choice(clicked_articles)
 
         # If all documents clicked just treat one of them as a negative sample
@@ -82,8 +99,8 @@ class EkstraBladetDataset(Dataset):
             unclicked_articles = clicked_articles
         neg_sample = random.choice(unclicked_articles)
 
-        # Get the article information
-        titles, subtitles, categories, pubtimes = [], [], [], [] # last two are pos and neg samples
+        # Get the article information, store pos and neg in last two
+        titles, subtitles, categories, pubtimes = [], [], [], []
         for article_id in old_clicks.tolist() + [pos_sample, neg_sample]:
             article = self.articles.loc[article_id]
             titles.append(article["title"])
@@ -91,8 +108,11 @@ class EkstraBladetDataset(Dataset):
             categories.append(article["category_str"])
             pubtimes.append(article["published_time"])
 
-        assert len(titles) == self.T + 2 and len(titles) == len(subtitles) and len(titles) == len(categories) and len(titles) == len(pubtimes)
-        
+        assert (len(titles) == self.T + 2 and
+                len(titles) == len(subtitles) and
+                len(titles) == len(categories) and
+                len(titles) == len(pubtimes))
+
         title_pos, title_neg = titles[-2], titles[-1]
         subtitle_pos, subtitle_neg = subtitles[-2], subtitles[-1]
         category_pos, category_neg = categories[-2], categories[-1]
@@ -122,7 +142,7 @@ class EkstraBladetDataset(Dataset):
         })
 
         return pos_prompt, neg_prompt
-    
+
     def validation_data(self, behavior, inview_articles, old_clicks):
         # Get the past article information
         titles, subtitles, categories, pubtimes = [], [], [], []
@@ -132,7 +152,7 @@ class EkstraBladetDataset(Dataset):
             subtitles.append(article["subtitle"])
             categories.append(article["category_str"])
             pubtimes.append(article["published_time"])
-        
+
         prompts = []
         for article_id in inview_articles:
             article = self.articles.loc[article_id]
@@ -148,9 +168,11 @@ class EkstraBladetDataset(Dataset):
             }))
             categories.append(article["category_str"])
             pubtimes.append(article["published_time"])
-        
+
         clicked_articles = behavior["article_ids_clicked"]
-        targets = [1 if article in clicked_articles else 0 for article in inview_articles]
+        targets = [
+            1 if article in clicked_articles else 0 for article in inview_articles
+        ]
 
         return {
             "prompts": prompts,
@@ -171,11 +193,11 @@ class EkstraBladetDataset(Dataset):
             subtitles.append(article["subtitle"])
             categories.append(article["category_str"])
             pubtimes.append(article["published_time"])
-        
+
         prompts = []
         for article_id in inview_articles:
             article = self.articles.loc[article_id]
-            
+
             prompts.append(self.create_prompt({
                 "titles": titles,
                 "subtitles": subtitles,
@@ -222,7 +244,7 @@ class EkstraBladetDataset(Dataset):
 
         raise ValueError(f"Invalid split value: {self.split}. Expected 'train', 'validation', or 'test'.")
 
-        
+
 def get_loader(args, split, tokenizer, debug=False):
     assert split in ['train', 'validation', 'test'], 'dataset should be one of train, dev, test'
 
@@ -232,7 +254,11 @@ def get_loader(args, split, tokenizer, debug=False):
         data = EkstraBladetDataset(args, create_prompt, split=split)  # todo change this to split
         shuffle = (split == "train")
         bs = args.batch_size if split == "train" else 1
-        return DataLoader(data, batch_size=bs, collate_fn=collator, num_workers=args.num_workers, shuffle=shuffle)
+        return DataLoader(data,
+                          batch_size=bs,
+                          collate_fn=collator,
+                          num_workers=args.num_workers,
+                          shuffle=shuffle)
 
     if args.prompt == "titles":
         create_prompt = create_prompt_titles
@@ -243,19 +269,36 @@ def get_loader(args, split, tokenizer, debug=False):
     elif args.prompt == "pubtime":
         create_prompt = create_prompt_w_publishtime
     else:
-        raise ValueError(f"Invalid prompt value: {args.prompt}. Expected 'titles', 'subtitles', 'diversity' or 'pubtime'.")
+        error = (
+            f"Invalid prompt value: {args.prompt}. "
+            f"Expected 'titles', 'subtitles', 'diversity' "
+            f"or 'pubtime'."
+        )
+        raise ValueError(error)
 
     if split == "train":
         collator = CollatorTrain(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
-        return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=True)
+        return DataLoader(data,
+                          batch_size=args.batch_size,
+                          collate_fn=collator,
+                          num_workers=args.num_workers,
+                          shuffle=True)
     if split == "validation":
         collator = CollatorValidation(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
-        return DataLoader(data, batch_size=1, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
+        return DataLoader(data,
+                          batch_size=1,
+                          collate_fn=collator,
+                          num_workers=args.num_workers,
+                          shuffle=False)
     if split == "test":
         collator = CollatorTest(tokenizer)
         data = EkstraBladetDataset(args, create_prompt, split=split, debug=debug)
-        return DataLoader(data, batch_size=args.batch_size, collate_fn=collator, num_workers=args.num_workers, shuffle=False)
-    
-    raise ValueError(f"Invalid split value: {split}. Expected 'train', 'validation', or 'test'.")
+        return DataLoader(data,
+                          batch_size=args.batch_size,
+                          collate_fn=collator,
+                          num_workers=args.num_workers,
+                          shuffle=False)
+    error = f"Invalid split value: {split}. Expected 'train', 'validation', or 'test'."
+    raise ValueError(error)
