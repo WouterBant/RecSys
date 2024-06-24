@@ -73,7 +73,6 @@ options:
   --prompt {titles,subtitles,QA+,diversity,pubtime}
 ```
 
-
 For overfitting on a small dataset, you can use:
 
 ```bash
@@ -104,16 +103,3 @@ And for creating a submission file with this model:
 ```bash
 python create_submission_file.py
 ```
-
-Note that the model is deterministic so you this will just provide the same results a in the [results](results/) folder and the ones on the leaderboard.
-
-## Notebooks
-
-In the [notebooks](notebooks) directory we provide notebooks for data preparation and debugging.
-
-## Acknowledgement 
-The approach largely follows the paper [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862). However, we chose to write the code from scratch as we found this easier as opposed to getting the provided code to work. Thus our implementation differs from this paper but the idea is the same.
-
-
-## Start of predictions file where 0's start (delete later)
-0 [127,156,17,241
