@@ -14,8 +14,8 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
     Specific to https://www.recsyschallenge.com/2024/. The test data is processed in order and predictions are written to a file.
     
     This files has the following format:
-    <impression_id_file1>: [<first_ranked_inview_article_id>, <second_ranked_inview_article_id>, ...]
-    <impression_id_file2>: [<first_ranked_inview_article_id>, <second_ranked_inview_article_id>, ...]
+    <impression_id_file1> [<first_ranked_inview_article_idx>,<second_ranked_inview_article_idx>,...]
+    <impression_id_file2> [<first_ranked_inview_article_idx>,<second_ranked_inview_article_idx>,...]
     ...
     """
 

@@ -1,4 +1,6 @@
 import torch
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class CollatorTrain:
@@ -36,6 +38,7 @@ class CollatorValidation:
         
         targets = batch[0]["targets"]
         categories = batch[0]["categories"]
+        publish_time = batch[0]["publish_time"]
         
         with self.tokenizer.as_target_tokenizer():
             decoder_start = self.tokenizer(['ja / nej' for data in batch for p in data["prompts"]], return_tensors="pt", padding=True, truncation=True)
@@ -46,6 +49,7 @@ class CollatorValidation:
             "decoder_start": decoder_start["input_ids"],
             "targets": targets,
             "categories": categories,  # can be used for diversity evaluation
+            "publish_time": publish_time
         }
 
 class CollatorUnderstand:

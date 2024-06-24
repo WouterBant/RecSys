@@ -141,13 +141,14 @@ class EkstraBladetDataset(Dataset):
                 "titles": titles,
                 "subtitles": subtitles,
                 "categories": categories[:self.args.T],
-                "publish_times": pubtimes,
+                "publish_times": pubtimes[:self.args.T],
                 "title": article["title"],
                 "subtitle": article["subtitle"],
                 "category": article["category_str"],
                 "publish_time": article["published_time"]
             }))
             categories.append(article["category_str"])
+            pubtimes.append(article["published_time"])
         
         clicked_articles = behavior["article_ids_clicked"]
         targets = [1 if article in clicked_articles else 0 for article in inview_articles]
@@ -156,6 +157,7 @@ class EkstraBladetDataset(Dataset):
             "prompts": prompts,
             "targets": targets,
             "categories": categories,
+            "publish_time": pubtimes
         }
 
     def test_data(self, behavior, inview_articles, old_clicks):

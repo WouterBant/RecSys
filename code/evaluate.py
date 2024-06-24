@@ -43,8 +43,8 @@ def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
 
         # Sum the metrics
         for key in metrics:
-            results[key] += metrics[key]*len(scores)
-        total += len(scores)
+            results[key] += metrics[key]
+        total += 1
     
     # Take the average of the metrics over the dataset
     for key in results:

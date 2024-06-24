@@ -14,6 +14,7 @@ class MetricsEvaluator:
         assert scores.shape == labels.shape, f"{scores.shape} {labels.shape}"
         
         return {
+            f'AUC': self.auc(scores, labels),
             f'ndcg': self.ndcg_at_k(scores, labels, 10**6),
             f'ndcg@{self.k}': self.ndcg_at_k(scores, labels, self.k),
             f'mrr': self.mrr_at_k(scores, labels, 10**6),
@@ -97,3 +98,12 @@ class MetricsEvaluator:
         order = np.argsort(scores)[::-1][:k]
         inview_categories_at_k = np.take(inview_categories, order)
         return len(set(inview_categories_at_k)) / k
+    
+    def auc(self, scores, labels):
+        order = np.argsort(scores)[::-1]
+        labels = np.take(labels, order)
+        rr_score = 0.0
+        for i in range(len(scores)):
+            if labels[i] == 1:
+                return (len(scores) - i)/len(scores)
+        return 0

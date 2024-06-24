@@ -69,7 +69,7 @@ options:
   --evaltrain                           for evaluating on training set
   --use_wandb                           Use Weights and Biases for logging
   --dataset DATASET                     dataset to train on
-  --model {QA,QA+,CG, CGc}                   model to train
+  --model {QA,QA+,CG, CGc}              model to train
   --prompt {titles,subtitles,QA+,diversity,pubtime}
 ```
 

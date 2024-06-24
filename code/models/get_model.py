@@ -31,7 +31,8 @@ def get_model(args):
         except Exception as e:
             print(e)
     
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not args.old and len(args.from_checkpoint) > 4:
-        model.load_state_dict(torch.load(args.from_checkpoint, map_location=args.device))
+        print(model.load_state_dict(torch.load(args.from_checkpoint, map_location=device)))
 
     return model
