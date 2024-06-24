@@ -17,4 +17,3 @@ dependencies:
   - protobuf
   - wandb
   - numpy
-  - scikit-learn
