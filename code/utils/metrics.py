@@ -12,26 +12,26 @@ class MetricsEvaluator:
         categories = output['categories']
 
         assert scores.shape == labels.shape, f"{scores.shape} {labels.shape}"
-        
+
         return {
-            f'AUC': self.auc(scores, labels),
-            f'ndcg': self.ndcg_at_k(scores, labels, 10**6),
+            'AUC': self.auc(scores, labels),
+            'ndcg': self.ndcg_at_k(scores, labels, 10**6),
             f'ndcg@{self.k}': self.ndcg_at_k(scores, labels, self.k),
-            f'mrr': self.mrr_at_k(scores, labels, 10**6),
+            'mrr': self.mrr_at_k(scores, labels, 10**6),
             f'mrr@{self.k}': self.mrr_at_k(scores, labels, self.k),
-            f'precision@1': self.precision_at_k(scores, labels, 1),
+            'precision@1': self.precision_at_k(scores, labels, 1),
             f'recall@{self.k}': self.recall_at_k(scores, labels),
             f'hit_ratio@{self.k}': self.hit_ratio_at_k(scores, labels),
-            f'diversity@1': self.diversity_at_k(scores, categories, k=1),
-            f'diversity@2': self.diversity_at_k(scores, categories, k=2),
-            f'diversity@3': self.diversity_at_k(scores, categories, k=3),
-            f'diversity@4': self.diversity_at_k(scores, categories, k=4),
-            f'diversity@5': self.diversity_at_k(scores, categories, k=5),
-            f'intra_list_diversity@1': self.intra_list_diversity_at_k(scores, categories, k=1),  # just a check
-            f'intra_list_diversity@2': self.intra_list_diversity_at_k(scores, categories, k=2),
-            f'intra_list_diversity@3': self.intra_list_diversity_at_k(scores, categories, k=3),
-            f'intra_list_diversity@4': self.intra_list_diversity_at_k(scores, categories, k=4),
-            f'intra_list_diversity@5': self.intra_list_diversity_at_k(scores, categories, k=5),
+            'diversity@1': self.diversity_at_k(scores, categories, k=1),
+            'diversity@2': self.diversity_at_k(scores, categories, k=2),
+            'diversity@3': self.diversity_at_k(scores, categories, k=3),
+            'diversity@4': self.diversity_at_k(scores, categories, k=4),
+            'diversity@5': self.diversity_at_k(scores, categories, k=5),
+            'intra_list_diversity@1': self.intra_list_diversity_at_k(scores, categories, k=1),
+            'intra_list_diversity@2': self.intra_list_diversity_at_k(scores, categories, k=2),
+            'intra_list_diversity@3': self.intra_list_diversity_at_k(scores, categories, k=3),
+            'intra_list_diversity@4': self.intra_list_diversity_at_k(scores, categories, k=4),
+            'intra_list_diversity@5': self.intra_list_diversity_at_k(scores, categories, k=5),
         }
 
     def get_top_k_recommendations(self, recommendations, scores):
@@ -98,11 +98,10 @@ class MetricsEvaluator:
         order = np.argsort(scores)[::-1][:k]
         inview_categories_at_k = np.take(inview_categories, order)
         return len(set(inview_categories_at_k)) / k
-    
+
     def auc(self, scores, labels):
         order = np.argsort(scores)[::-1]
         labels = np.take(labels, order)
-        rr_score = 0.0
         for i in range(len(scores)):
             if labels[i] == 1:
                 return (len(scores) - i)/len(scores)
