@@ -4,6 +4,18 @@
 
 Inspired by [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862) we cast news recommendation as a text-to-text generation problem. We use click logs from a Danish news site provided in the [RecSys Challenge 2024](https://www.recsyschallenge.com/2024/).
 
+<table align="center">
+  <tr align="center">
+      <td><img src="assets/pipeline_CG_CGc_QA.png" width="570"></td>
+      <td><img src="assets/pipeline_QA+.png" width="657"></td>
+  </tr>
+</table>
+<table align="center">
+  <tr align="center">
+      <td><img src="assets/prompts.png"></td>
+  </tr>
+</table>
+
 ## Getting started
 
 ### Clone code to your device
@@ -69,7 +81,7 @@ options:
   --evaltrain                           for evaluating on training set
   --use_wandb                           Use Weights and Biases for logging
   --dataset DATASET                     dataset to train on
-  --model {QA,QA+,CG, CGc}              model to train
+  --model {QA,QA+,CG,CGc}               model to train
   --prompt {titles,subtitles,QA+,diversity,pubtime}
 ```
 
@@ -103,3 +115,10 @@ And for creating a submission file with this model:
 ```bash
 python create_submission_file.py
 ```
+
+## Notebooks
+
+In the [notebooks](notebooks) directory we provide notebooks for data preparation and debugging.
+
+## Acknowledgement 
+The approach largely follows the paper [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862). However, we chose to write the code from scratch as we found this easier as opposed to getting the provided code to work. Thus our implementation differs from this paper but the idea is the same.

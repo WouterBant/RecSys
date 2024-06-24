@@ -1,6 +1,0 @@
-Sat Jun 22 19:10:49 UTC 2024 - Error in script at line 10: python evaluate.py --batch_size 1 --labda 0.0 --dataset demo --model CGc --prompt titles --evaltrain ../../../new/model_lr_0.0001_lab_0.0_model_CGc_prompt_titles.pth
-Sat Jun 22 20:05:26 UTC 2024 - Error in script at line 20: s.pth --evaltrain
-Mon Jun 24 07:44:33 UTC 2024 - Error in script at line 81: python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt pubtime+ --from_checkpoint ../../../new/model_lr_5e-5_lab_0.0_model_QA+_prompt_QA+.pth
-Mon Jun 24 07:44:37 UTC 2024 - Error in script at line 82: python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt pubtime+ --from_checkpoint ../../../new/model_lr_5e-5_lab_0.0_model_QA+_prompt_QA+.pth --evaltrain
-Mon Jun 24 07:45:56 UTC 2024 - Error in script at line 81: python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-5_lab_0.0_model_QA+_prompt_QA+.pth
-Mon Jun 24 07:46:00 UTC 2024 - Error in script at line 82: python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-5_lab_0.0_model_QA+_prompt_QA+.pth --evaltrain

@@ -78,8 +78,8 @@ trap 'log_error $LINENO "$BASH_COMMAND"' ERR
 # python evaluate.py --batch_size 1 --labda 0.4 --dataset demo --model QA --prompt pubtime --from_checkpoint ../../../new/model_lr_0.0001_lab_0.4_model_QA_prompt_pubtime.pth
 # python evaluate.py --batch_size 1 --labda 0.4 --dataset demo --model QA --prompt pubtime --from_checkpoint ../../../new/model_lr_0.0001_lab_0.4_model_QA_prompt_pubtime.pth --evaltrain
 
-python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth
-python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth --evaltrain
+# python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth
+# python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth --evaltrain
 
 # python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.4_model_QA+_prompt_QA+.pth
 # python evaluate.py --batch_size 1 --labda 5e-5 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../../../new/model_lr_5e-05_lab_0.4_model_QA+_prompt_QA+.pth --evaltrain
