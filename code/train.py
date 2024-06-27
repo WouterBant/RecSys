@@ -17,14 +17,14 @@ def train(args):
     model = get_model(args)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader_train = get_loader(args, 'train', tokenizer)
-    data_loader_val = get_loader(args, 'validation', tokenizer)
+    data_loader_train = get_loader(args, "train", tokenizer)
+    data_loader_val = get_loader(args, "validation", tokenizer)
 
     scheduler = CosineWarmupScheduler(
         optimizer,
         max_lr=args.lr,
         warmup_steps=args.warmup_steps,
-        total_steps=len(data_loader_train) * args.n_epochs
+        total_steps=len(data_loader_train) * args.n_epochs,
     )
     scheduler.current_step = args.current_step
 
@@ -79,19 +79,21 @@ def train(args):
                 # From pairwise rank loss (if available else 1)
                 accuracy = (pos_prob_yes > neg_prob_yes).float().mean()
 
-                wandb.log({
-                    'batch_loss': loss.item(),
-                    'batch_accuracy': accuracy.item(),
-                    'lr': cur_lr,
-                    'avg_pos_prob_yes': pos_prob_yes.mean(),
-                    'avg_neg_prob_yes': neg_prob_yes.mean(),
-                })
+                wandb.log(
+                    {
+                        "batch_loss": loss.item(),
+                        "batch_accuracy": accuracy.item(),
+                        "lr": cur_lr,
+                        "avg_pos_prob_yes": pos_prob_yes.mean(),
+                        "avg_neg_prob_yes": neg_prob_yes.mean(),
+                    }
+                )
 
     final_model = copy.deepcopy(model.state_dict())
     return results, final_model, best_model
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
 
     if args.use_wandb:

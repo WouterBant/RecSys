@@ -10,7 +10,7 @@ trap 'log_error $LINENO "$BASH_COMMAND"' ERR
 # ----------------------------------------------------------------------------------
 # It's important to note that:
 # - we trained all models for approximately 8 hours on a single A100 GPU with 40GB RAM
-# - checkpoints for each of the models below are already available at  TODO insert url
+# - checkpoints for each of the models below are already available at https://huggingface.co/Wouter01/mT5Ranking
 # - uncommenting all of the below will results in a run time of at least a month on a single A100 GPU (on the large dataset)
 # - if you decide to increase/decrease the batch size we recommend changing the learning rate by the same factor
 # ----------------------------------------------------------------------------------

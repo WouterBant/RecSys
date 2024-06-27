@@ -19,16 +19,16 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
     ...
     """
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = get_model(args).to(device)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader = get_loader(args, 'test', tokenizer)
+    data_loader = get_loader(args, "test", tokenizer)
     model.eval()
 
     previous_impression_id = None
     impression_probs = []
 
-    with open(output_filename, 'w') as f:
+    with open(output_filename, "w") as f:
         for batch in tqdm(data_loader):
             impression_id = batch["impression_ids"]
             input_ids = batch["prompt_input_ids"].to(device)
@@ -45,7 +45,7 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
                 chunk = {
                     "prompt_input_ids": input_ids[start_idx:end_idx],
                     "prompt_attention_mask": attention_mask[start_idx:end_idx],
-                    "decoder_start": decoder_input_ids[start_idx:end_idx]
+                    "decoder_start": decoder_input_ids[start_idx:end_idx],
                 }
 
                 outputs = model.validation_step(chunk)
@@ -57,10 +57,9 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
                             # Write previous impression's predictions
                             sorted_idxs = np.argsort(np.array(impression_probs)) + 1
                             sorted_idxs = sorted_idxs[::-1]
-                            sorted_idxs_str = ','.join(map(str, sorted_idxs.tolist()))
+                            sorted_idxs_str = ",".join(map(str, sorted_idxs.tolist()))
                             formatted_str = (
-                                f"{previous_impression_id} "
-                                f"[{sorted_idxs_str}]\n"
+                                f"{previous_impression_id} " f"[{sorted_idxs_str}]\n"
                             )
                             f.write(formatted_str)
                             f.flush()
@@ -73,15 +72,12 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
 
         # Don't forget to write the last impression's predictions
         sorted_idxs = np.argsort(np.array(impression_probs))
-        sorted_idxs_str = ','.join(map(str, sorted_idxs.tolist()))
-        formatted_str = (
-            f"{previous_impression_id} "
-            f"[{sorted_idxs_str}]\n"
-        )
+        sorted_idxs_str = ",".join(map(str, sorted_idxs.tolist()))
+        formatted_str = f"{previous_impression_id} " f"[{sorted_idxs_str}]\n"
         f.write(formatted_str)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
     print(args)
     generate_and_write_predictions(args, output_filename="predictions.txt")

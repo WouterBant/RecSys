@@ -23,13 +23,15 @@ class CosineWarmupScheduler:
         if self.current_step <= self.warmup_steps:  # Linear warmup phase
             lr = self.max_lr * (self.current_step / self.warmup_steps)
         elif self.current_step <= self.total_steps:  # Cosine annealing phase
-            done_fraction = (self.current_step - self.warmup_steps) / (self.total_steps - self.warmup_steps)
+            done_fraction = (self.current_step - self.warmup_steps) / (
+                self.total_steps - self.warmup_steps
+            )
             cosine_value = math.cos(math.pi * done_fraction)
             lr = self.max_lr * 0.5 * (1 + cosine_value)
         else:
             lr = 0
 
         for param_group in self.optimizer.param_groups:
-            param_group['lr'] = lr
+            param_group["lr"] = lr
 
         return lr  # Used for wandb logging

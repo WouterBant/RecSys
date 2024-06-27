@@ -7,37 +7,47 @@ class MetricsEvaluator:
         self.T = T
 
     def compute_metrics(self, output):
-        scores = output['scores']
-        labels = output['labels']
-        categories = output['categories']
+        scores = output["scores"]
+        labels = output["labels"]
+        categories = output["categories"]
 
         assert scores.shape == labels.shape, f"{scores.shape} {labels.shape}"
 
         return {
-            'AUC': self.auc(scores, labels),
-            'ndcg': self.ndcg_at_k(scores, labels, 10**6),
-            f'ndcg@{self.k}': self.ndcg_at_k(scores, labels, self.k),
-            'mrr': self.mrr_at_k(scores, labels, 10**6),
-            f'mrr@{self.k}': self.mrr_at_k(scores, labels, self.k),
-            'precision@1': self.precision_at_k(scores, labels, 1),
-            f'recall@{self.k}': self.recall_at_k(scores, labels),
-            f'hit_ratio@{self.k}': self.hit_ratio_at_k(scores, labels),
-            'diversity@1': self.diversity_at_k(scores, categories, k=1),
-            'diversity@2': self.diversity_at_k(scores, categories, k=2),
-            'diversity@3': self.diversity_at_k(scores, categories, k=3),
-            'diversity@4': self.diversity_at_k(scores, categories, k=4),
-            'diversity@5': self.diversity_at_k(scores, categories, k=5),
-            'intra_list_diversity@1': self.intra_list_diversity_at_k(scores, categories, k=1),
-            'intra_list_diversity@2': self.intra_list_diversity_at_k(scores, categories, k=2),
-            'intra_list_diversity@3': self.intra_list_diversity_at_k(scores, categories, k=3),
-            'intra_list_diversity@4': self.intra_list_diversity_at_k(scores, categories, k=4),
-            'intra_list_diversity@5': self.intra_list_diversity_at_k(scores, categories, k=5),
+            "AUC": self.auc(scores, labels),
+            "ndcg": self.ndcg_at_k(scores, labels, 10**6),
+            f"ndcg@{self.k}": self.ndcg_at_k(scores, labels, self.k),
+            "mrr": self.mrr_at_k(scores, labels, 10**6),
+            f"mrr@{self.k}": self.mrr_at_k(scores, labels, self.k),
+            "precision@1": self.precision_at_k(scores, labels, 1),
+            f"recall@{self.k}": self.recall_at_k(scores, labels),
+            f"hit_ratio@{self.k}": self.hit_ratio_at_k(scores, labels),
+            "diversity@1": self.diversity_at_k(scores, categories, k=1),
+            "diversity@2": self.diversity_at_k(scores, categories, k=2),
+            "diversity@3": self.diversity_at_k(scores, categories, k=3),
+            "diversity@4": self.diversity_at_k(scores, categories, k=4),
+            "diversity@5": self.diversity_at_k(scores, categories, k=5),
+            "intra_list_diversity@1": self.intra_list_diversity_at_k(
+                scores, categories, k=1
+            ),
+            "intra_list_diversity@2": self.intra_list_diversity_at_k(
+                scores, categories, k=2
+            ),
+            "intra_list_diversity@3": self.intra_list_diversity_at_k(
+                scores, categories, k=3
+            ),
+            "intra_list_diversity@4": self.intra_list_diversity_at_k(
+                scores, categories, k=4
+            ),
+            "intra_list_diversity@5": self.intra_list_diversity_at_k(
+                scores, categories, k=5
+            ),
         }
 
     def get_top_k_recommendations(self, recommendations, scores):
         top_k_recommendations = []
         for rec_list, score_list in zip(recommendations, scores):
-            top_k_indices = np.argsort(score_list)[::-1][:self.k]
+            top_k_indices = np.argsort(score_list)[::-1][: self.k]
             top_k_recommendations.append([rec_list[i] for i in top_k_indices])
         return np.array(top_k_recommendations)
 
@@ -71,19 +81,19 @@ class MetricsEvaluator:
         return np.sum(labels) / k
 
     def recall_at_k(self, scores, labels):
-        order = np.argsort(scores)[::-1][:self.k]
+        order = np.argsort(scores)[::-1][: self.k]
         labels_at_k = np.take(labels, order)
         return np.sum(labels_at_k) / np.sum(labels) if np.sum(labels) != 0 else 0
 
     def hit_ratio_at_k(self, scores, labels):
-        order = np.argsort(scores)[::-1][:self.k]
+        order = np.argsort(scores)[::-1][: self.k]
         labels_at_k = np.take(labels, order)
         return np.any(labels_at_k)
 
     def diversity_at_k(self, scores, categories, k):
         # Count the number of categories in topk that were not in the clicked categories
-        clicked_categories = categories[:self.T]
-        inview_categories = categories[self.T:]
+        clicked_categories = categories[: self.T]
+        inview_categories = categories[self.T :]
         order = np.argsort(scores)[::-1][:k]
         inview_categories_at_k = np.take(inview_categories, order)
         diversity = 0
@@ -94,7 +104,7 @@ class MetricsEvaluator:
 
     def intra_list_diversity_at_k(self, scores, categories, k):
         # Count the number of categories in topk that are unique
-        inview_categories = categories[self.T:]
+        inview_categories = categories[self.T :]
         order = np.argsort(scores)[::-1][:k]
         inview_categories_at_k = np.take(inview_categories, order)
         return len(set(inview_categories_at_k)) / k
@@ -104,5 +114,5 @@ class MetricsEvaluator:
         labels = np.take(labels, order)
         for i in range(len(scores)):
             if labels[i] == 1:
-                return (len(scores) - i)/len(scores)
+                return (len(scores) - i) / len(scores)
         return 0

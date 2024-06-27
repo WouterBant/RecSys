@@ -1,5 +1,6 @@
 import torch
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -10,36 +11,30 @@ class CollatorTrain:
 
     def __call__(self, batch):
         pos_inputs = self.tokenizer(
-            [p for p, _ in batch],
-            return_tensors='pt',
-            padding=True,
-            truncation=True
+            [p for p, _ in batch], return_tensors="pt", padding=True, truncation=True
         )
         neg_inputs = self.tokenizer(
-            [n for _, n in batch],
-            return_tensors='pt',
-            padding=True,
-            truncation=True
+            [n for _, n in batch], return_tensors="pt", padding=True, truncation=True
         )
 
         with self.tokenizer.as_target_tokenizer():
             pos_targets = self.tokenizer(
-                ['ja' for _ in batch],
+                ["ja" for _ in batch],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
             neg_targets = self.tokenizer(
-                ['nej' for _ in batch],
+                ["nej" for _ in batch],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
             decoder_start = self.tokenizer(
-                ['ja / nej' for _ in batch],
+                ["ja / nej" for _ in batch],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
 
         return {
@@ -59,12 +54,12 @@ class CollatorValidation:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        # TODO now relies on batch size 1
+        # NOTE relies on batch size 1
         prompts = self.tokenizer(
             [p for data in batch for p in data["prompts"]],
-            return_tensors='pt',
+            return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
         )
 
         targets = batch[0]["targets"]
@@ -73,10 +68,10 @@ class CollatorValidation:
 
         with self.tokenizer.as_target_tokenizer():
             decoder_start = self.tokenizer(
-                ['ja / nej' for data in batch for p in data["prompts"]],
+                ["ja / nej" for data in batch for p in data["prompts"]],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
 
         return {
@@ -85,7 +80,7 @@ class CollatorValidation:
             "decoder_start": decoder_start["input_ids"],
             "targets": targets,
             "categories": categories,  # can be used for diversity evaluation
-            "publish_time": publish_time
+            "publish_time": publish_time,
         }
 
 
@@ -95,12 +90,12 @@ class CollatorUnderstand:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        # TODO now relies on batch size 1
+        # NOTE relies on batch size 1
         prompts = self.tokenizer(
             [p for data in batch for p in data["prompts"]],
-            return_tensors='pt',
+            return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
         )
 
         targets = batch[0]["targets"]
@@ -108,10 +103,10 @@ class CollatorUnderstand:
 
         with self.tokenizer.as_target_tokenizer():
             decoder_start = self.tokenizer(
-                ['ja / nej' for data in batch for p in data["prompts"]],
+                ["ja / nej" for data in batch for p in data["prompts"]],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
 
         return {
@@ -120,7 +115,7 @@ class CollatorUnderstand:
             "decoder_start": decoder_start["input_ids"],
             "targets": targets,
             "categories": categories,  # can be used for diversity evaluation
-            "prompts": [p for data in batch for p in data["prompts"]]
+            "prompts": [p for data in batch for p in data["prompts"]],
         }
 
 
@@ -132,25 +127,25 @@ class CollatorTest:
     def __call__(self, batch):
         prompts = self.tokenizer(
             [p for prompts, _ in batch for p in prompts],
-            return_tensors='pt',
+            return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
         )
         impression_ids = [i for prompts, i in batch for p in prompts]
 
         with self.tokenizer.as_target_tokenizer():
             decoder_start = self.tokenizer(
-                ['ja / nej' for prompts, _ in batch for p in prompts],
+                ["ja / nej" for prompts, _ in batch for p in prompts],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
 
         return {
             "prompt_input_ids": prompts["input_ids"],
             "prompt_attention_mask": prompts["attention_mask"],
             "decoder_start": decoder_start["input_ids"],
-            "impression_ids": impression_ids
+            "impression_ids": impression_ids,
         }
 
 
@@ -162,9 +157,9 @@ class CollatorQAfast:
     def __call__(self, batch):
         inputs = self.tokenizer(
             [b["prompt"] for b in batch],
-            return_tensors='pt',
+            return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
         )
 
         with self.tokenizer.as_target_tokenizer():
@@ -172,7 +167,7 @@ class CollatorQAfast:
                 [b["decoder_input"] for b in batch],
                 return_tensors="pt",
                 padding=True,
-                truncation=True
+                truncation=True,
             )
 
         target_idxs = torch.tensor([b["target"] for b in batch])

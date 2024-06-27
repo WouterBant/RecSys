@@ -22,7 +22,7 @@ class QA_fast_model(BaseModel):
         outputs = self.model(
             input_ids=batch["pos_input_ids"].to(self.device),
             attention_mask=batch["pos_attention_mask"].to(self.device),
-            decoder_input_ids=batch["decoder_start"].to(self.device)
+            decoder_input_ids=batch["decoder_start"].to(self.device),
         )
         logits = outputs.start_logits
         assert logits.shape == batch["decoder_start"].shape
@@ -40,9 +40,7 @@ class QA_fast_model(BaseModel):
         from the ranking loss calculation.
         """
         mask = torch.ones_like(probs).scatter_(
-            1,
-            batch["targets_idxs"].unsqueeze(1).to(self.device),
-            0
+            1, batch["targets_idxs"].unsqueeze(1).to(self.device), 0
         )
         incorrect_probs = probs * mask
         max_incorrect_prob = incorrect_probs.max(dim=-1).values
@@ -52,19 +50,12 @@ class QA_fast_model(BaseModel):
         incorrect by at least the margin. Faster than pairwise ranking loss,
         but makes the model much worse we show.
         """
-        rank_loss = torch.clamp(
-            0.1 - (correct_prob - max_incorrect_prob),
-            min=0
-        ).mean()
+        rank_loss = torch.clamp(0.1 - (correct_prob - max_incorrect_prob), min=0).mean()
 
         # Combine the cross-entropy loss with the ranking loss
-        combined_loss = loss_nll + self.args.labda*rank_loss
+        combined_loss = loss_nll + self.args.labda * rank_loss
 
-        return (
-            combined_loss,
-            correct_prob.mean(),
-            torch.tensor([0.0]).to(self.device)
-        )
+        return (combined_loss, correct_prob.mean(), torch.tensor([0.0]).to(self.device))
 
     def validation_step(self, batch):
         # Forward all examples simultaneously
@@ -72,7 +63,7 @@ class QA_fast_model(BaseModel):
             outputs = self.model(
                 input_ids=batch["pos_input_ids"].to(self.device),
                 attention_mask=batch["pos_attention_mask"].to(self.device),
-                decoder_input_ids=batch["decoder_start"].to(self.device)
+                decoder_input_ids=batch["decoder_start"].to(self.device),
             )
         logits = outputs.start_logits
 

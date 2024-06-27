@@ -1,4 +1,4 @@
-# Ranking Danish news articles with multilingual T5
+# Generative News Recommendation with mT5
 
 ## About
 

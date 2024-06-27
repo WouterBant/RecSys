@@ -13,8 +13,8 @@ from utils.argparser import argparser
 from utils.metrics import MetricsEvaluator
 
 
-def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def evaluate(args, model, data_loader):  # NOTE batch size should be 1
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     results = defaultdict(int)
 
     metrics_evaluator = MetricsEvaluator(k=5, T=args.T)
@@ -35,11 +35,13 @@ def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
         labels = np.array(batch["targets"])
         categories = np.array(batch["categories"])
 
-        metrics = metrics_evaluator.compute_metrics({
-            'scores': scores,
-            'labels': labels,
-            'categories': categories,
-        })
+        metrics = metrics_evaluator.compute_metrics(
+            {
+                "scores": scores,
+                "labels": labels,
+                "categories": categories,
+            }
+        )
 
         # Sum the metrics
         for key in metrics:
@@ -57,7 +59,7 @@ def evaluate(args, model, data_loader):  # TODO only capable of batch size 1
     return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
 
     name = "train" if args.evaltrain else "validation"
@@ -80,12 +82,9 @@ if __name__ == '__main__':
 
     model = get_model(args)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    data_loader_val = get_loader(args, 'validation', tokenizer)
+    data_loader_val = get_loader(args, "validation", tokenizer)
     results = evaluate(args, model, data_loader_val)
 
-    filename = (
-        f"../results/{name}/"
-        f"{args.from_checkpoint.split('/')[-1][:-4]}.json"
-    )
-    with open(filename, 'w') as file:
+    filename = f"../results/{name}/" f"{args.from_checkpoint.split('/')[-1][:-4]}.json"
+    with open(filename, "w") as file:
         json.dump(results, file)

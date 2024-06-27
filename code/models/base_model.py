@@ -10,7 +10,7 @@ class BaseModel(nn.Module):
     def __init__(self, args):
         super(BaseModel, self).__init__()
         self.args = args
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
 
     @classmethod
@@ -46,7 +46,7 @@ class BaseModel(nn.Module):
             outputs = self.model(
                 input_ids=batch["prompt_input_ids"].to(self.device),
                 attention_mask=batch["prompt_attention_mask"].to(self.device),
-                decoder_input_ids=batch["decoder_start"].to(self.device)
+                decoder_input_ids=batch["decoder_start"].to(self.device),
             )
         return outputs
 

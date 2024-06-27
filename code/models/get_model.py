@@ -10,7 +10,7 @@ model_mapping = {
     "CG": CG_model,
     "CGc": CG_classifier_model,
     "QA": QA_model,
-    "QA+": QA_fast_model
+    "QA+": QA_fast_model,
 }
 
 

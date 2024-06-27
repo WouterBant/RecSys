@@ -14,10 +14,7 @@ class CG_classifier_model(BaseModel):
     def __init__(self, args):
         super(CG_classifier_model, self).__init__(args)
         self.model = MT5ForConditionalGeneration.from_pretrained(args.backbone)
-        classifier = nn.Sequential(
-            nn.Linear(512, 1),
-            nn.Sigmoid()
-        )
+        classifier = nn.Sequential(nn.Linear(512, 1), nn.Sigmoid())
         self.model.lm_head = classifier
         self.model.to(self.device)
         self.ce = nn.BCELoss()
@@ -35,7 +32,7 @@ class CG_classifier_model(BaseModel):
         # Compute loss
         loss_nll = self.ce(pos_prob, pos_target) + self.ce(neg_prob, neg_target)
         loss_bpr = self.compute_rank_loss(pos_prob, neg_prob).mean(dim=0)
-        loss = (1-self.args.labda)*loss_nll + self.args.labda*loss_bpr
+        loss = (1 - self.args.labda) * loss_nll + self.args.labda * loss_bpr
         return loss, pos_prob, neg_prob
 
     def validation_step(self, batch):

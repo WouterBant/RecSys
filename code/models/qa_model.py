@@ -39,7 +39,7 @@ class QA_model(BaseModel):
         # Compute the loss
         loss_nll = self.ce(pos_logits, pos_target) + self.ce(neg_logits, neg_target)
         loss_bpr = self.compute_rank_loss(pos_prob_yes, neg_prob_yes).mean(dim=0)
-        loss = (1-self.args.labda)*loss_nll + self.args.labda*loss_bpr
+        loss = (1 - self.args.labda) * loss_nll + self.args.labda * loss_bpr
 
         return loss, pos_prob_yes, neg_prob_yes
 
