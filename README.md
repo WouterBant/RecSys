@@ -2,7 +2,7 @@
 
 ## About
 
-Inspired by [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862) we cast news recommendation as a text-to-text generation problem. We use click logs from a Danish news site provided in the [RecSys Challenge 2024](https://www.recsyschallenge.com/2024/).
+Inspired by [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862) we cast news recommendation as a text-to-text generation problem. We use click logs from a Danish news site provided in the [RecSys Challenge 2024](https://www.recsyschallenge.com/2024/). We summarized our work on a [poster](assets/poster.pdf)
 
 <table align="center">
   <tr align="center">
@@ -30,7 +30,7 @@ cd RecSys
 
 ### Environment
 
-For managing dependencies we use Conda, see https://conda.io/projects/conda/en/latest/user-guide/install/index.html for installation instructions. When installed take the following steps:
+For managing dependencies we use Conda, see https://docs.anaconda.com/miniconda/ for installation instructions. When installed take the following steps:
 
 ```bash
 conda env create -f environment.yml
@@ -59,11 +59,15 @@ We ran many experiments, see [main.sh](main.sh) for all commands we used. Uncomm
 ./main.sh
 ```
 
-Note that we have Weights and Biases integration which can be used by adding the ```--use_wandb```  flag to the commands in [main.sh](main.sh).
+Note that we have Weights and Biases integration which can be used by adding the ```--use_wandb```  flag to the commands in [main.sh](main.sh). When using W&B make sure you set your api key (https://wandb.ai/authorize) as environment variable:
+
+```bash
+export WANDB_API_KEY='your_api_key'
+```
 
 ## Notebooks
 
-In the [notebooks](notebooks) directory we provide notebooks for data preparation and debugging.
+In the [notebooks](notebooks) directory we provide notebooks for data preparation, visualizations, and small experiments.
 
 ## Running your own experiments
 

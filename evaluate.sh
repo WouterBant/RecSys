@@ -129,3 +129,11 @@ cd code
 # wget --header="Referer: https://huggingface.co/" -P ../checkpoints https://huggingface.co/Wouter01/mT5Ranking/resolve/main/model_lr_0.0001_lab_0.4_model_QA_prompt_pubtime.pth
 # python evaluate.py --batch_size 1 --dataset demo --model QA --prompt pubtime --from_checkpoint ../checkpoints/model_lr_0.0001_lab_0.4_model_QA_prompt_pubtime.pth
 # python evaluate.py --batch_size 1 --dataset demo --model QA --prompt pubtime --from_checkpoint ../checkpoints/model_lr_0.0001_lab_0.4_model_QA_prompt_pubtime.pth --evaltrain
+
+# wget --header="Referer: https://huggingface.co/" -P ../checkpoints https://huggingface.co/Wouter01/mT5Ranking/resolve/main/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth
+# python evaluate.py --batch_size 1 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../checkpoints/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth
+# python evaluate.py --batch_size 1 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../checkpoints/model_lr_5e-05_lab_0.0_model_QA+_prompt_QA+.pth --evaltrain
+
+# wget --header="Referer: https://huggingface.co/" -P ../checkpoints https://huggingface.co/Wouter01/mT5Ranking/resolve/main/model_lr_5e-05_lab_0.4_model_QA+_prompt_QA+.pth
+# python evaluate.py --batch_size 1 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../checkpoints/model_lr_5e-05_lab_0.4_model_QA+_prompt_QA+.pth
+# python evaluate.py --batch_size 1 --dataset demo --model QA+ --prompt QA+ --from_checkpoint ../checkpoints/model_lr_5e-05_lab_0.4_model_QA+_prompt_QA+.pth --evaltrain

@@ -53,3 +53,6 @@ cd code
 
 # python train.py --batch_size 16 --labda 0.0 --dataset large --model QA --prompt pubtime
 # python train.py --batch_size 16 --labda 0.4 --dataset large --model QA --prompt pubtime
+
+# python train.py --lr 5e-5 --batch_size 8 --labda 0.0 --dataset large --model QA+ --prompt QA+
+# python train.py --lr 5e-5 --batch_size 8 --labda 0.4 --dataset large --model QA+ --prompt QA+
