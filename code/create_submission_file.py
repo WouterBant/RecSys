@@ -55,8 +55,7 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
                     if previous_impression_id != i:
                         if previous_impression_id is not None:
                             # Write previous impression's predictions
-                            sorted_idxs = np.argsort(np.array(impression_probs)) + 1
-                            sorted_idxs = sorted_idxs[::-1]
+                            sorted_idxs = np.argsort(-np.array(impression_probs)) + 1
                             sorted_idxs_str = ",".join(map(str, sorted_idxs.tolist()))
                             formatted_str = (
                                 f"{previous_impression_id} " f"[{sorted_idxs_str}]\n"
@@ -71,7 +70,7 @@ def generate_and_write_predictions(args, output_filename="predictions.txt"):
                     impression_probs.append(p)
 
         # Don't forget to write the last impression's predictions
-        sorted_idxs = np.argsort(np.array(impression_probs))
+        sorted_idxs = np.argsort(-np.array(impression_probs))
         sorted_idxs_str = ",".join(map(str, sorted_idxs.tolist()))
         formatted_str = f"{previous_impression_id} " f"[{sorted_idxs_str}]\n"
         f.write(formatted_str)
