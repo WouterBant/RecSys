@@ -10,4 +10,8 @@
 
 - [num_params.ipynb](num_params.ipynb): shows the number of parameters for each model.
 
+- [pearson_correlation.ipynb](pearson_correlation.ipynb): calculates the Pearson correlation between previously clicked articles of the user and the model predictions.
+
 - [preprocess_data.ipynb](preprocess_data.ipynb): shows how convert the provided parquet files to a huggingface dataset.
+
+- [understand_model_predictions.ipynb](understand_model_predictions.ipynb): is used to beter understand the predictions and visualizes the outputs in different scenarios.
