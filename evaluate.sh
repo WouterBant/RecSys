@@ -36,7 +36,7 @@ cd code
 ### Evaluating the trained models
 # wget --header="Referer: https://huggingface.co/" -P ../checkpoints https://huggingface.co/Wouter01/mT5Ranking/resolve/main/model_lr_0.0001_lab_0.0_model_CGc_prompt_titles.pth
 # python evaluate.py --batch_size 1 --dataset demo --model CGc --prompt titles --from_checkpoint ../checkpoints/model_lr_0.0001_lab_0.0_model_CGc_prompt_titles.pth
-# python evaluate.py --batch_size 1 --dataset demo --model CGc --prompt titles --evaltrain ../checkpoints/model_lr_0.0001_lab_0.0_model_CGc_prompt_titles.pth
+# python evaluate.py --batch_size 1 --dataset demo --model CGc --prompt titles --from_checkpoint ../checkpoints/model_lr_0.0001_lab_0.0_model_CGc_prompt_titles.pth --evaltrain
 
 # wget --header="Referer: https://huggingface.co/" -P ../checkpoints https://huggingface.co/Wouter01/mT5Ranking/resolve/main/model_lr_0.0001_lab_0.4_model_CGc_prompt_titles.pth
 # python evaluate.py --batch_size 1 --dataset demo --model CGc --prompt titles --from_checkpoint ../checkpoints/model_lr_0.0001_lab_0.4_model_CGc_prompt_titles.pth

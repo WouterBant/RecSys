@@ -56,7 +56,7 @@ Note that the relevant data will be downloaded automatically without asking for 
 We ran many experiments, see [main.sh](main.sh) for all commands we used. Uncomment the ones you want to reproduce. Subsequently run:
 
 ```bash
-./main.sh
+./train.sh
 ```
 
 Note that we have Weights and Biases integration which can be used by adding the ```--use_wandb```  flag to the commands in [main.sh](main.sh). When using W&B make sure you set your api key (https://wandb.ai/authorize) as environment variable:
