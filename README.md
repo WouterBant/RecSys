@@ -42,7 +42,7 @@ conda activate RecSys
 
 ## Evaluation
 
-In the file [evaluate.sh](evaluate.sh) all commands necessary for obtaining the results (except for the random and heurisitic baselines). This includes downloading the fine-tuned mT5 checkpoints from our [huggingface](https://huggingface.co/Wouter01/mT5Ranking) page. We recommend not uncommenting the whole file as the CG checkpoints are 1.2GB and the CGc, QA, and QA+ 689MB. The models are deterministic in evaluation mode so the results will be the same as presented in the [results](results) folder. 
+In the file [evaluate.sh](evaluate.sh) all commands necessary for obtaining the results (except for the random and heuristic baselines). This includes downloading the fine-tuned mT5 checkpoints from our [huggingface](https://huggingface.co/Wouter01/mT5Ranking) page. We recommend not uncommenting the whole file as the CG checkpoints are 1.2GB and the CGc, QA, and QA+ 689MB. The models are deterministic in evaluation mode so the results will be the same as presented in the [results](results) folder. 
 
 After uncommenting the desired lines run:
 ```bash
@@ -119,4 +119,4 @@ python train.py --debug --T 4 --lr 0.001 --batch_size 16 --labda 0.0 --n_epochs 
 ```
 
 ## Acknowledgement 
-The approach largely follows the paper [PBNR: Prompt-based News Recommender System](https://arxiv.org/abs/2304.07862). However, we chose to write the code from scratch as we found this easier as opposed to getting the provided code to work. Thus our implementation differs from this paper but the idea is the same.
+The approach largely follows the paper [Prompt-Based Generative News Recommendation (PGNR): Accuracy and Controllability](https://link.springer.com/chapter/10.1007/978-3-031-56060-6_5). However, we chose to write the code from scratch as we found this easier as opposed to getting the provided code to work. Thus our implementation differs from this paper but the idea is the same.
